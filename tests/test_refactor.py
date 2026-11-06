@@ -93,12 +93,15 @@ def test_donante_expone_su_historial():
 
 # ---------- Task 2: Introduce Parameter Object ScoringWeights ----------
 def test_pesos_por_defecto_conservan_el_orden():
+    # Valores obtenidos con el código ANTES de la refactorización (commit 1dcef3f, fórmula
+    # 45*cercanía + 25*compatibilidad + 30*tasa - 20 por reserva de O-). Si alguien cambia un peso
+    # por defecto en ScoringWeights, el orden o los puntajes cambian y esta prueba falla.
     from donacion.agent.weights import ScoringWeights
     donors = [make_donor("a", lat=20.687, lon=-103.35), make_donor("b", "O+", lat=20.70, lon=-103.38),
               make_donor("c", "O-", lat=20.69, lon=-103.351), make_donor("d", "A-", lat=20.62, lon=-103.42)]
-    before = [(c.donor.id, c.score) for c in RuleBasedScoring().rank(donors, a_request())]
-    after = [(c.donor.id, c.score) for c in RuleBasedScoring(ScoringWeights()).rank(donors, a_request())]
-    assert after == before
+    expected = [("a", 84.9), ("c", 74.4), ("b", 69.8), ("d", 59.4)]
+    assert [(c.donor.id, c.score) for c in RuleBasedScoring().rank(donors, a_request())] == expected
+    assert [(c.donor.id, c.score) for c in RuleBasedScoring(ScoringWeights()).rank(donors, a_request())] == expected
 
 
 def test_pesos_configurables_cambian_la_prioridad():
