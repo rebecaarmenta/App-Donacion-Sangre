@@ -37,3 +37,14 @@ def test_la_hoja_de_estilos_usa_solo_la_paleta():
         assert f"{name}: {value}" in css, name
     colores = set(re.findall(r"#[0-9a-f]{6}\b", css))
     assert colores <= set(PALETA.values())
+
+
+DONANTE_IDS = ["form-registro", "form-acceso", "seccion-perfil", "perfil-nombre", "perfil-tipo",
+               "perfil-estado", "form-tamizaje", "lista-alertas", "btn-salir", "mensaje"]
+
+
+def test_pagina_donante_tiene_los_elementos_que_usa_su_script():
+    html = client().get("/app/donante.html").text
+    for element_id in DONANTE_IDS:
+        assert f'id="{element_id}"' in html, element_id
+    assert 'src="js/donante.js"' in html and 'type="module"' in html

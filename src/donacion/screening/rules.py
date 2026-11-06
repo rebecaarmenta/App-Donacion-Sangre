@@ -76,7 +76,7 @@ class _WaitingPeriodRule(EligibilityRule):
             return None
         until = self._until(event)
         if today < until:
-            return RuleOutcome(EligibilityStatus.DEFERRED, f"{self._label} (puede donar desde {until.isoformat()})", until)
+            return RuleOutcome(EligibilityStatus.DEFERRED, self._label, until)
         return None
 
 

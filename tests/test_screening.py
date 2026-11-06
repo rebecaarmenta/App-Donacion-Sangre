@@ -65,3 +65,9 @@ def test_ningun_diferido_aparece_como_apto_el_dia_anterior():
     result = evaluate(medication_end_date=TODAY)
     assert not result.allows_donation_on(TODAY + timedelta(days=4))
     assert result.allows_donation_on(TODAY + timedelta(days=5))
+
+
+def test_la_razon_del_diferimiento_no_repite_la_fecha():
+    result = evaluate(tattoo_or_piercing_date=date(2026, 8, 6))
+    assert result.reasons == ("Tatuaje o perforación reciente",)
+    assert result.eligible_from == date(2027, 8, 6)

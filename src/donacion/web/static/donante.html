@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Soy donante · Donación de sangre</title>
+  <link rel="stylesheet" href="/app/css/app.css">
+</head>
+<body>
+  <header class="encabezado">
+    <div class="encabezado-contenido">
+      <a class="marca" href="/app/"><span class="gota"></span>Donación de sangre</a>
+      <nav class="nav">
+        <a href="donante.html" class="activo">Soy donante</a>
+        <a href="solicitud.html">Necesito sangre</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div id="mensaje" class="mensaje oculto" role="status"></div>
+
+    <!-- Sin sesión: registro y acceso -->
+    <section id="seccion-acceso">
+      <h1>Soy donante</h1>
+      <p class="subtitulo">Regístrate una sola vez y te avisaremos cuando alguien cerca necesite tu tipo de sangre.</p>
+      <div class="rejilla">
+        <form id="form-registro" class="card">
+          <h2>Crear cuenta</h2>
+          <label>Nombre completo <input name="name" required></label>
+          <label>Correo <input name="email" type="email" required></label>
+          <label>Contraseña (mínimo 8 caracteres) <input name="password" type="password" minlength="8" required></label>
+          <div class="campos">
+            <label>Fecha de nacimiento <input name="birth_date" type="date"></label>
+            <label>Peso (kg) <input name="weight_kg" type="number" min="1" step="0.1" required></label>
+          </div>
+          <div class="campos">
+            <label>Tipo de sangre <select name="blood_type" required></select></label>
+            <label>Zona donde vives <select name="zone" required></select></label>
+          </div>
+          <label>Última donación (si recuerdas) <input name="last_donation" type="date"></label>
+          <button class="btn" type="submit">Registrarme</button>
+        </form>
+
+        <form id="form-acceso" class="card">
+          <h2>Ya tengo cuenta</h2>
+          <label>Correo <input name="email" type="email" required></label>
+          <label>Contraseña <input name="password" type="password" required></label>
+          <button class="btn" type="submit">Entrar</button>
+          <p class="ayuda">Cuentas de prueba: donante1@demo.mx a donante12@demo.mx, contraseña demo1234.</p>
+        </form>
+      </div>
+    </section>
+
+    <!-- Con sesión: perfil, cuestionario y alertas -->
+    <section id="seccion-perfil" class="oculto">
+      <div class="card">
+        <div class="resumen">
+          <div>
+            <h1 id="perfil-nombre"></h1>
+            <p class="ayuda">Tipo de sangre: <strong id="perfil-tipo"></strong></p>
+          </div>
+          <span id="perfil-estado" class="insignia"></span>
+        </div>
+        <p id="perfil-detalle" class="ayuda"></p>
+        <button id="btn-salir" class="btn-secundario" type="button">Cerrar sesión</button>
+      </div>
+
+      <form id="form-tamizaje" class="card">
+        <h2>Cuestionario de elegibilidad</h2>
+        <p class="ayuda">Deja vacío lo que no aplique. Tu edad, peso y última donación se toman de tu perfil.</p>
+        <div class="campos">
+          <label>Fecha de tu último tatuaje o perforación <input name="tattoo_or_piercing_date" type="date"></label>
+          <label>Fecha de tu última cirugía <input name="surgery_date" type="date"></label>
+          <label>Último día que tomaste medicamento <input name="medication_end_date" type="date"></label>
+        </div>
+        <label class="casilla"><input name="permanent_exclusion" type="checkbox">
+          Tengo una condición médica que excluye de forma permanente (por ejemplo VIH o hepatitis B/C)</label>
+        <button class="btn" type="submit">Revisar si puedo donar</button>
+      </form>
+
+      <div class="card">
+        <div class="resumen">
+          <h2>Mis alertas</h2>
+          <button id="btn-actualizar" class="btn-secundario" type="button">Actualizar</button>
+        </div>
+        <ul id="lista-alertas" class="lista"></ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>MVP · Diseño de Software · ITESO · ODS 3 Salud y Bienestar</footer>
+  <script type="module" src="js/donante.js"></script>
+</body>
+</html>
