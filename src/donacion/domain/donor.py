@@ -7,9 +7,7 @@ from .blood_type import BloodType
 from .eligibility import EligibilityResult, EligibilityStatus
 from .errors import ValidationError
 from .location import Location
-
-# Tasa de respuesta supuesta para quien todavía no recibe alertas.
-_DEFAULT_RESPONSE_RATE = 0.5
+from .response_history import ResponseHistory
 
 
 class Donor:
@@ -32,8 +30,7 @@ class Donor:
         self._location = location
         self._last_donation = last_donation
         self._eligibility = EligibilityResult.pending()
-        self._alerts_received = 0
-        self._alerts_accepted = 0
+        self._history = ResponseHistory()
 
     # ---- lectura ----
     @property
@@ -58,10 +55,11 @@ class Donor:
     def eligibility(self) -> EligibilityResult: return self._eligibility
 
     @property
+    def response_history(self) -> ResponseHistory: return self._history
+
+    @property
     def response_rate(self) -> float:
-        if self._alerts_received == 0:
-            return _DEFAULT_RESPONSE_RATE
-        return self._alerts_accepted / self._alerts_received
+        return self._history.rate
 
     def age_on(self, day: date) -> int:
         years = day.year - self._birth_date.year
@@ -77,12 +75,12 @@ class Donor:
         self._eligibility = result
 
     def register_alert(self) -> None:
-        self._alerts_received += 1
+        self._history = self._history.with_alert()
 
     def record_donation(self, day: date, next_eligible: date) -> None:
         """Registra una donación confirmada y difiere al donante hasta next_eligible."""
         self._last_donation = day
-        self._alerts_accepted += 1
+        self._history = self._history.with_acceptance()
         self._eligibility = EligibilityResult(
             EligibilityStatus.DEFERRED,
             ("Donó recientemente",),

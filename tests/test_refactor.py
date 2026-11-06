@@ -71,3 +71,20 @@ def test_ids_inyectados():
 
 def test_console_notifier_solo_envia():
     assert not hasattr(ConsoleNotifier(), "sent_to")
+
+
+# ---------- Task 2: Extract Class ResponseHistory ----------
+def test_historial_de_respuesta_es_inmutable_y_calcula_la_tasa():
+    from donacion.domain.response_history import ResponseHistory
+    h = ResponseHistory()
+    assert h.rate == 0.5
+    h2 = h.with_alert().with_alert().with_acceptance()
+    assert (h.received, h2.received, h2.accepted, h2.rate) == (0, 2, 1, 0.5)
+
+
+def test_donante_expone_su_historial():
+    donor = make_donor("d1")
+    donor.register_alert()
+    donor.record_donation(date(2026, 1, 1), date(2026, 3, 1))
+    assert (donor.response_history.received, donor.response_history.accepted) == (1, 1)
+    assert donor.response_rate == 1.0
