@@ -88,3 +88,25 @@ def test_donante_expone_su_historial():
     donor.record_donation(date(2026, 1, 1), date(2026, 3, 1))
     assert (donor.response_history.received, donor.response_history.accepted) == (1, 1)
     assert donor.response_rate == 1.0
+
+
+# ---------- Task 2: Introduce Parameter Object ScoringWeights ----------
+def test_pesos_por_defecto_conservan_el_orden():
+    from donacion.agent.weights import ScoringWeights
+    donors = [make_donor("a", lat=20.687, lon=-103.35), make_donor("b", "O+", lat=20.70, lon=-103.38),
+              make_donor("c", "O-", lat=20.69, lon=-103.351), make_donor("d", "A-", lat=20.62, lon=-103.42)]
+    before = [(c.donor.id, c.score) for c in RuleBasedScoring().rank(donors, a_request())]
+    after = [(c.donor.id, c.score) for c in RuleBasedScoring(ScoringWeights()).rank(donors, a_request())]
+    assert after == before
+
+
+def test_pesos_configurables_cambian_la_prioridad():
+    from donacion.agent.weights import ScoringWeights
+    cerca = make_donor("cerca", lat=20.687, lon=-103.35)            # tasa 0.5 (sin historial)
+    lejos = make_donor("lejos", lat=20.55, lon=-103.45)              # ~18 km
+    for _ in range(2):
+        lejos.register_alert()
+        lejos.record_donation(date(2026, 1, 1), date(2026, 3, 1))     # tasa 1.0
+    assert RuleBasedScoring().rank([cerca, lejos], a_request())[0].donor.id == "cerca"
+    only_response = ScoringWeights(proximity=0, blood_match=0, response=100)
+    assert RuleBasedScoring(only_response).rank([cerca, lejos], a_request())[0].donor.id == "lejos"

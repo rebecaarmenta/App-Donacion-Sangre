@@ -9,6 +9,7 @@ from ..domain.alert import RankedCandidate
 from ..domain.blood_request import BloodRequest, Urgency
 from ..domain.donor import Donor
 from ..ports.llm import LLMClient, LLMUnavailableError
+from .weights import ScoringWeights
 
 log = logging.getLogger(__name__)
 
@@ -22,8 +23,8 @@ class ScoringStrategy(ABC):
 class RuleBasedScoring(ScoringStrategy):
     """Puntaje determinista. También es el respaldo cuando la IA no está disponible."""
 
-    def __init__(self, reference_km: float = 30.0) -> None:
-        self._reference_km = reference_km
+    def __init__(self, weights: ScoringWeights = ScoringWeights()) -> None:
+        self._w = weights
 
     def rank(self, donors, request):
         ranked = [self._score(d, request) for d in donors]
@@ -31,7 +32,7 @@ class RuleBasedScoring(ScoringStrategy):
 
     def _score(self, donor: Donor, request: BloodRequest) -> RankedCandidate:
         distance = donor.location.distance_km(request.hospital.location)
-        proximity = max(0.0, 1 - distance / self._reference_km)
+        proximity = max(0.0, 1 - distance / self._w.reference_km)
         exact_match = donor.blood_type == request.blood_type
         reasons = [f"a {distance:.1f} km del hospital"]
 
@@ -44,12 +45,14 @@ class RuleBasedScoring(ScoringStrategy):
         else:
             reasons.append(f"última donación: {donor.last_donation.isoformat()}")
 
-        score = 45 * proximity + 25 * (1.0 if exact_match else 0.6) + 30 * donor.response_rate
+        match = 1.0 if exact_match else self._w.compatible_factor
+        score = (self._w.proximity * proximity + self._w.blood_match * match
+                 + self._w.response * donor.response_rate)
 
         # Reservar O- (donante universal) para casos críticos o pacientes O-.
         if (donor.blood_type.is_universal_donor() and not request.blood_type.is_universal_donor()
                 and request.urgency is not Urgency.CRITICAL):
-            score -= 20
+            score -= self._w.universal_reserve_penalty
             reasons.append("sangre O- reservada para casos críticos")
 
         return RankedCandidate(donor, round(max(score, 0.0), 1), round(distance, 1), tuple(reasons))
