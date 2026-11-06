@@ -48,3 +48,14 @@ def test_pagina_donante_tiene_los_elementos_que_usa_su_script():
     for element_id in DONANTE_IDS:
         assert f'id="{element_id}"' in html, element_id
     assert 'src="js/donante.js"' in html and 'type="module"' in html
+
+
+SOLICITUD_IDS = ["form-solicitud", "seccion-estado", "estado-resumen", "tabla-candidatos", "btn-candidatos",
+                 "btn-oleada", "btn-escalar", "lista-oleadas", "mensaje", "indicador-ia"]
+
+
+def test_pagina_solicitud_tiene_los_elementos_que_usa_su_script():
+    html = client().get("/app/solicitud.html").text
+    for element_id in SOLICITUD_IDS:
+        assert f'id="{element_id}"' in html, element_id
+    assert 'src="js/solicitud.js"' in html and 'type="module"' in html

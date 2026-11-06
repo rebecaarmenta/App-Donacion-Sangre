@@ -81,6 +81,22 @@ python run.py
 Abre http://localhost:8000 en el navegador. La documentación interactiva de la API está en http://localhost:8000/docs.
 Para detenerla: `Ctrl + C`.
 
+### Interfaz web
+
+Con `python run.py` abierto, entra a **http://localhost:8000** (redirige a `/app/`).
+
+- **Soy donante** (`/app/donante.html`): registro, inicio de sesión, perfil con su estado (apto, diferido o no apto), cuestionario de elegibilidad y alertas recibidas con el botón "Confirmo que voy a donar".
+- **Necesito sangre** (`/app/solicitud.html`): crear la solicitud eligiendo hospital y urgencia, ver a los candidatos que ordenó el agente con sus razones, enviar oleadas de alertas, revisar el escalamiento y ver el estado (por ejemplo, "Cubierta 2/2").
+
+Flujo para la demo:
+1. En **Necesito sangre**, crea una solicitud: Familia Pérez, A+, 2 unidades, Hospital Civil Fray Antonio Alcalde, urgencia crítica.
+2. **Ver candidatos**: no aparecen Gabriela Paz (tatuaje reciente), Héctor Luna (donó hace 30 días), Jorge Ríos (peso menor a 50 kg) ni Fernando Gil (B+, incompatible).
+3. **Enviar oleada de alertas**.
+4. En otra pestaña, en **Soy donante**, entra como `donante1@demo.mx` / `demo1234` (Ana López) y presiona "Confirmo que voy a donar". Repite con `donante5@demo.mx` (Elena Soto). La solicitud queda **Cubierta 2/2**.
+
+> La sesión del donante solo guarda su id en el navegador (`localStorage`); es un MVP sin tokens de seguridad.
+> Los datos viven en memoria: al reiniciar el servidor se vuelven a cargar solo los donantes de prueba.
+
 **Demo en consola** (registro → tamizaje → solicitud → ranking → oleada → confirmación):
 
 ```bash
@@ -90,7 +106,8 @@ python scripts/demo_cli.py
 **Pruebas:**
 
 ```bash
-python -m pytest
+python -m pytest                       # backend (Python)
+node --test tests/web/*.test.mjs       # módulos de la interfaz (JavaScript, Node 18+)
 ```
 
 ### Usar la IA (Claude)

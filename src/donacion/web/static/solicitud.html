@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Necesito sangre · Donación de sangre</title>
+  <link rel="stylesheet" href="/app/css/app.css">
+</head>
+<body>
+  <header class="encabezado">
+    <div class="encabezado-contenido">
+      <a class="marca" href="/app/"><span class="gota"></span>Donación de sangre</a>
+      <nav class="nav">
+        <a href="donante.html">Soy donante</a>
+        <a href="solicitud.html" class="activo">Necesito sangre</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>Necesito sangre</h1>
+    <p class="subtitulo">Registra la solicitud y el agente avisará primero a los donantes con más probabilidad de ayudar.
+      <span id="indicador-ia" class="insignia insignia-pendiente"></span></p>
+
+    <div id="mensaje" class="mensaje oculto" role="status"></div>
+
+    <form id="form-solicitud" class="card">
+      <h2>Nueva solicitud</h2>
+      <div class="campos">
+        <label>Nombre de quien solicita <input name="requester_name" required placeholder="Familia Pérez"></label>
+        <label>Tipo de sangre del paciente <select name="blood_type" required></select></label>
+        <label>Unidades necesarias <input name="units_needed" type="number" min="1" value="1" required></label>
+      </div>
+      <div class="campos">
+        <label>Hospital <select name="hospital" required></select></label>
+        <label>Urgencia <select name="urgency" required></select></label>
+        <label>Vigencia (horas) <input name="hours_valid" type="number" min="1" max="168" value="24" required></label>
+      </div>
+      <button class="btn" type="submit">Crear solicitud</button>
+    </form>
+
+    <section id="seccion-estado" class="oculto">
+      <div class="card">
+        <div class="resumen">
+          <h2>Estado de la solicitud</h2>
+          <button id="btn-nueva" class="btn-secundario" type="button">Nueva solicitud</button>
+        </div>
+        <div id="estado-resumen" class="resumen"></div>
+      </div>
+
+      <div class="card">
+        <h2>Agente de priorización</h2>
+        <p class="ayuda">El agente filtra a los donantes compatibles, aptos y cercanos, los ordena y avisa por oleadas de 10.
+          Si en 15 minutos no se cubre la solicitud, puede enviar la siguiente oleada.</p>
+        <div class="acciones">
+          <button id="btn-candidatos" class="btn-secundario" type="button">Ver candidatos</button>
+          <button id="btn-oleada" class="btn" type="button">Enviar oleada de alertas</button>
+          <button id="btn-escalar" class="btn-secundario" type="button">Revisar escalamiento</button>
+          <button id="btn-refrescar" class="btn-secundario" type="button">Actualizar estado</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Candidatos ordenados por el agente</h2>
+        <div class="tabla-scroll">
+          <table id="tabla-candidatos">
+            <thead><tr><th>#</th><th>Donante</th><th>Tipo</th><th>Puntaje</th><th>Distancia</th><th>Por qué</th></tr></thead>
+            <tbody><tr><td colspan="6" class="ayuda">Presiona "Ver candidatos".</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Alertas enviadas</h2>
+        <ul id="lista-oleadas" class="lista"><li class="meta">Aún no se ha enviado ninguna oleada.</li></ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>MVP · Diseño de Software · ITESO · ODS 3 Salud y Bienestar</footer>
+  <script type="module" src="js/solicitud.js"></script>
+</body>
+</html>
