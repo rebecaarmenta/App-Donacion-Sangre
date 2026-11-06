@@ -1,7 +1,7 @@
 // Página de la solicitud: el familiar crea la solicitud y coordina las oleadas del agente.
 import { createApi } from "./api.js";
 import { BLOOD_TYPES, HOSPITALS } from "./catalogs.js";
-import { describeDispatch, escapeHtml, statusLabel, urgencyLabel } from "./format.js";
+import { describeDispatch, describeEscalation, escapeHtml, statusLabel, urgencyLabel } from "./format.js";
 import { buildRequestPayload } from "./payloads.js";
 
 const api = createApi();
@@ -127,13 +127,10 @@ $("btn-oleada").addEventListener("click", () => run(async () => {
 $("btn-escalar").addEventListener("click", () => run(async () => {
   const result = await api.escalate();
   const alerts = result[currentId()] ?? [];
-  if (!alerts.length) {
-    showMessage("Aún no toca otra oleada (espera de 15 minutos).");
-    return;
-  }
   sentAlerts.push(...alerts);
   renderAlerts();
-  showMessage(describeDispatch(alerts));
+  const [request, candidates] = await Promise.all([api.getRequest(currentId()), api.getCandidates(currentId())]);
+  showMessage(describeEscalation(alerts, request, candidates));
 }));
 
 $("btn-refrescar").addEventListener("click", () => run(async () => {}));

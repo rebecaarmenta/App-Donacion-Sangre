@@ -32,3 +32,16 @@ test("oleadas", () => {
   assert.equal(describeDispatch([{ wave: 2 }, { wave: 2 }]), "Oleada 2 enviada a 2 donantes.");
   assert.equal(describeDispatch([{ wave: 1 }]), "Oleada 1 enviada a 1 donante.");
 });
+
+import { describeEscalation } from "../../src/donacion/web/static/js/format.js";
+
+test("escalamiento: distingue esperar, sin primera oleada y sin donantes", () => {
+  const request = (waves, notified) => ({ waves_sent: waves, notified_donors: notified });
+  const cand = ids => ids.map(id => ({ donor_id: id }));
+  assert.equal(describeEscalation([{ wave: 2 }], request(1, ["a"]), cand(["a", "b"])), "Oleada 2 enviada a 1 donante.");
+  assert.equal(describeEscalation([], request(0, []), cand(["a"])), "Primero envía la primera oleada de alertas.");
+  assert.equal(describeEscalation([], request(1, ["a", "b"]), cand(["a", "b"])),
+    "Ya no quedan donantes compatibles por avisar.");
+  assert.equal(describeEscalation([], request(1, ["a"]), cand(["a", "b"])),
+    "Aún no toca otra oleada (espera de 15 minutos).");
+});
