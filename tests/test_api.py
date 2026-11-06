@@ -1,15 +1,15 @@
 """Prueba de punta a punta del flujo de la demo a través de la API."""
 from fastapi.testclient import TestClient
 
-from donacion.container import build_container
+from donacion.container import build_platform
 from donacion.demo import DEMO_PASSWORD, seed_demo
 from donacion.main import create_app
 
 
 def make_client(clock):
-    container = build_container(use_llm=False, clock=clock)
-    seed_demo(container)
-    return TestClient(create_app(container)), container
+    platform = build_platform(use_llm=False, clock=clock)
+    seed_demo(platform)
+    return TestClient(create_app(platform)), platform
 
 
 def test_flujo_completo(clock):

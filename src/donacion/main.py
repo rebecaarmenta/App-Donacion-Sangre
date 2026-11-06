@@ -11,19 +11,20 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from .api.routes import router
-from .container import Container, build_container
+from .container import build_platform
 from .domain.errors import AuthenticationError, ConflictError, DomainError, NotFoundError
+from .services.platform import DonationPlatform
 
 _STATUS = {NotFoundError: 404, ConflictError: 409, AuthenticationError: 401}
 
 
-def create_app(container: Container | None = None) -> FastAPI:
+def create_app(platform: DonationPlatform | None = None) -> FastAPI:
     app = FastAPI(
         title="Plataforma Agéntica de Donación de Sangre - MVP",
         description="Registro de donantes, tamizaje (NOM-253), solicitudes y agente de priorización.",
         version="0.1.0",
     )
-    app.state.container = container or build_container()
+    app.state.platform = platform or build_platform()
 
     @app.exception_handler(DomainError)
     def domain_error_handler(_: Request, exc: DomainError) -> JSONResponse:
@@ -39,4 +40,4 @@ app = create_app()
 
 if os.getenv("DONACION_SEED_DEMO", "1") == "1":
     from .demo import seed_demo
-    seed_demo(app.state.container)
+    seed_demo(app.state.platform)

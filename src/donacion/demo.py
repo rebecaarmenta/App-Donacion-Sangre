@@ -3,9 +3,9 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from .container import Container
 from .domain.eligibility import ScreeningAnswers
 from .services.donor_service import RegisterDonorCommand
+from .services.platform import DonationPlatform
 
 DEMO_PASSWORD = "demo1234"
 
@@ -27,13 +27,13 @@ _DONORS = [
 ]
 
 
-def seed_demo(container: Container) -> None:
-    today = container.clock.now().date()
+def seed_demo(platform: DonationPlatform) -> None:
+    today = platform.clock.now().date()
     for i, (name, blood, birth, weight, lat, lon, days_since, answers) in enumerate(_DONORS, start=1):
         last = today - timedelta(days=days_since) if days_since else None
-        donor = container.donors.register(RegisterDonorCommand(
+        donor = platform.register_donor(RegisterDonorCommand(
             name=name, email=f"donante{i}@demo.mx", password=DEMO_PASSWORD, birth_date=birth,
             weight_kg=weight, blood_type=blood, lat=lat, lon=lon, last_donation=last,
         ))
         dates = {k: today + timedelta(days=v) for k, v in answers.items()}
-        container.screening.submit(donor.id, ScreeningAnswers(**dates))
+        platform.submit_screening(donor.id, ScreeningAnswers(**dates))
