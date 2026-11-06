@@ -6,14 +6,18 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from .api.routes import router
 from .container import build_platform
 from .domain.errors import AuthenticationError, ConflictError, DomainError, NotFoundError
 from .services.platform import DonationPlatform
+
+WEB_DIR = Path(__file__).parent / "web" / "static"
 
 _STATUS = {NotFoundError: 404, ConflictError: 409, AuthenticationError: 401}
 
@@ -32,6 +36,12 @@ def create_app(platform: DonationPlatform | None = None) -> FastAPI:
         return JSONResponse(status_code=status, content={"detail": str(exc)})
 
     app.include_router(router)
+    app.mount("/app", StaticFiles(directory=WEB_DIR, html=True), name="web")
+
+    @app.get("/", include_in_schema=False)
+    def home() -> RedirectResponse:
+        return RedirectResponse("/app/")
+
     return app
 
 

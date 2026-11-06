@@ -1,0 +1,188 @@
+/* Paleta: blanco con rojo pastel (temática de donación de sangre). No usar otros colores. */
+:root {
+  --rojo: #b5545d;
+  --rojo-pastel: #e8a3a9;
+  --rojo-claro: #f7e4e5;
+  --fondo: #ffffff;
+  --fondo-suave: #faf6f6;
+  --texto: #3d3535;
+  --texto-suave: #7a6e6e;
+  --borde: #eadddd;
+  --sombra: 0 2px 10px rgba(181, 84, 93, 0.07);
+  --radio: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--fondo-suave);
+  color: var(--texto);
+  line-height: 1.5;
+}
+
+/* ---------- encabezado ---------- */
+.encabezado {
+  background: var(--fondo);
+  border-bottom: 3px solid var(--rojo-pastel);
+}
+.encabezado-contenido {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--rojo);
+  font-weight: 700;
+  font-size: 1.15rem;
+  text-decoration: none;
+}
+.gota {
+  width: 18px;
+  height: 18px;
+  background: var(--rojo-pastel);
+  border-radius: 0 50% 50% 50%;
+  transform: rotate(45deg);
+}
+.nav a {
+  color: var(--texto-suave);
+  text-decoration: none;
+  margin-left: 16px;
+  font-size: 0.95rem;
+}
+.nav a:hover, .nav a.activo { color: var(--rojo); }
+
+/* ---------- estructura ---------- */
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+}
+h1 { color: var(--rojo); font-size: 1.7rem; margin: 0 0 6px; }
+h2 { color: var(--rojo); font-size: 1.2rem; margin: 0 0 12px; }
+h3 { font-size: 1rem; margin: 0 0 8px; }
+.subtitulo { color: var(--texto-suave); margin: 0 0 24px; }
+
+.card {
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 22px;
+  margin-bottom: 20px;
+}
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+/* ---------- portada ---------- */
+.opcion {
+  display: block;
+  text-decoration: none;
+  color: var(--texto);
+  border-top: 4px solid var(--rojo-pastel);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.opcion:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(181, 84, 93, 0.12); }
+.opcion h2 { margin-bottom: 6px; }
+.opcion p { color: var(--texto-suave); margin: 0; }
+
+/* ---------- formularios ---------- */
+form { display: grid; gap: 12px; }
+.campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+label { display: grid; gap: 4px; font-size: 0.9rem; color: var(--texto-suave); }
+input, select {
+  font: inherit;
+  color: var(--texto);
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--rojo-pastel);
+  box-shadow: 0 0 0 3px var(--rojo-claro);
+}
+.casilla { display: flex; align-items: center; gap: 8px; color: var(--texto); }
+.casilla input { width: auto; }
+.ayuda { font-size: 0.85rem; color: var(--texto-suave); margin: 0; }
+
+/* ---------- botones ---------- */
+.btn, .btn-secundario {
+  font: inherit;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 10px 18px;
+  cursor: pointer;
+  justify-self: start;
+}
+.btn { background: var(--rojo); color: var(--fondo); border: 1px solid var(--rojo); }
+.btn:hover { background: var(--fondo); color: var(--rojo); }
+.btn-secundario { background: var(--fondo); color: var(--rojo); border: 1px solid var(--rojo-pastel); }
+.btn-secundario:hover { background: var(--rojo-claro); }
+.btn:disabled, .btn-secundario:disabled { opacity: 0.45; cursor: not-allowed; }
+.acciones { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ---------- mensajes ---------- */
+.mensaje { border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; }
+.error { background: var(--rojo-claro); color: var(--rojo); border: 1px solid var(--rojo-pastel); }
+.ok { background: var(--fondo); color: var(--texto); border: 1px solid var(--borde); border-left: 4px solid var(--rojo-pastel); }
+
+/* ---------- insignias de estado (el estado siempre va escrito, no solo en color) ---------- */
+.insignia {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+}
+.insignia-apto, .insignia-abierta { background: var(--rojo-claro); color: var(--rojo); }
+.insignia-diferido { background: var(--fondo-suave); color: var(--texto); border-color: var(--rojo-pastel); }
+.insignia-no_apto, .insignia-vencida { background: var(--borde); color: var(--texto); }
+.insignia-pendiente { background: var(--fondo); color: var(--texto-suave); border-color: var(--borde); }
+.insignia-cubierta { background: var(--rojo); color: var(--fondo); }
+
+/* ---------- listas y tablas ---------- */
+.lista { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.lista li {
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--rojo-pastel);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--fondo);
+}
+.lista .meta { font-size: 0.85rem; color: var(--texto-suave); }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th {
+  text-align: left;
+  color: var(--texto-suave);
+  font-weight: 600;
+  border-bottom: 2px solid var(--rojo-pastel);
+  padding: 8px;
+}
+td { border-bottom: 1px solid var(--borde); padding: 8px; vertical-align: top; }
+td ul { margin: 0; padding-left: 18px; color: var(--texto-suave); }
+.tabla-scroll { overflow-x: auto; }
+.resumen { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+.resumen strong { color: var(--rojo); }
+
+.oculto { display: none !important; }
+
+footer {
+  text-align: center;
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+  padding: 0 20px 28px;
+}
