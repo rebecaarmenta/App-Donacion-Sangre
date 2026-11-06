@@ -17,6 +17,9 @@ from .matching_service import MatchingService
 from .request_service import CreateRequestCommand, RequestService
 from .screening_service import ScreeningService
 
+# Los comandos de entrada forman parte de la interfaz pública de la fachada.
+__all__ = ["DonationPlatform", "RegisterDonorCommand", "CreateRequestCommand"]
+
 
 class DonationPlatform:
     def __init__(self, donors: DonorService, screening: ScreeningService, requests: RequestService,

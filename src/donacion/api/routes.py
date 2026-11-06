@@ -4,8 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 
 from ..domain.eligibility import ScreeningAnswers
-from ..services.donor_service import RegisterDonorCommand
-from ..services.platform import DonationPlatform
+from ..services.platform import DonationPlatform, RegisterDonorCommand
 from .schemas import (AlertOut, CandidateOut, ConfirmIn, DonorIn, DonorOut, EligibilityOut, LoginIn,
                       RequestIn, RequestOut, ScreeningIn)
 

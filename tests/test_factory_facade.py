@@ -51,3 +51,6 @@ def test_la_api_solo_depende_de_la_fachada():
     assert "DonationPlatform" in source
     for concrete in ("DonorService", "MatchingService", "RequestService", "ScreeningService", "adapters"):
         assert concrete not in source
+    imports = [line for line in source.splitlines() if line.startswith(("from ", "import "))]
+    service_imports = [line for line in imports if "services" in line]
+    assert service_imports == ["from ..services.platform import DonationPlatform, RegisterDonorCommand"]
