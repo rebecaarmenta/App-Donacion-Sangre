@@ -11,6 +11,7 @@ from ..domain.location import Location
 from ..ports.clock import Clock
 from ..ports.ids import IdGenerator
 from ..ports.repositories import DonorRepository, RequestRepository
+from .request_finder import RequestFinder
 
 
 @dataclass(frozen=True)
@@ -26,9 +27,10 @@ class CreateRequestCommand:
 
 
 class RequestService:
-    def __init__(self, requests: RequestRepository, donors: DonorRepository, clock: Clock,
-                 donation_interval_days: int, ids: IdGenerator) -> None:
+    def __init__(self, requests: RequestRepository, finder: RequestFinder, donors: DonorRepository,
+                 clock: Clock, donation_interval_days: int, ids: IdGenerator) -> None:
         self._requests = requests
+        self._finder = finder
         self._donors = donors
         self._clock = clock
         self._interval = timedelta(days=donation_interval_days)
@@ -53,11 +55,7 @@ class RequestService:
         return request
 
     def get(self, request_id: str) -> BloodRequest:
-        request = self._requests.get(request_id)
-        if request is None:
-            raise NotFoundError(f"No existe la solicitud {request_id}")
-        request.expire_if_needed(self._clock.now())
-        return request
+        return self._finder.get(request_id)
 
     def confirm_donation(self, request_id: str, donor_id: str) -> BloodRequest:
         request = self.get(request_id)

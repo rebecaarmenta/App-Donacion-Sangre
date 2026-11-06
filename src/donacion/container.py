@@ -27,6 +27,7 @@ from .screening.rules import (AgeRule, DonationIntervalRule, MedicationRule, Per
                               SurgeryRule, TattooRule, WeightRule)
 from .services.donor_service import DonorService
 from .services.matching_service import MatchingService
+from .services.request_finder import RequestFinder
 from .services.request_service import RequestService
 from .services.screening_service import ScreeningService
 
@@ -65,6 +66,7 @@ def build_container(use_llm: bool | None = None, clock: Clock | None = None,
     request_repo = InMemoryRequestRepository()
     alert_log = InMemoryAlertLog()
     ids = UuidIdGenerator()
+    finder = RequestFinder(request_repo, clock)
 
     evaluator = ScreeningEvaluator([
         AgeRule(min_age=18, max_age=65),
@@ -96,8 +98,9 @@ def build_container(use_llm: bool | None = None, clock: Clock | None = None,
     return Container(
         donors=DonorService(donor_repo, Pbkdf2Hasher(), ids),
         screening=ScreeningService(donor_repo, evaluator, clock),
-        requests=RequestService(request_repo, donor_repo, clock, DONATION_INTERVAL_DAYS, ids),
-        matching=MatchingService(agent, donor_repo, request_repo, ConsoleNotifier(), alert_log, clock),
+        requests=RequestService(request_repo, finder, donor_repo, clock, DONATION_INTERVAL_DAYS, ids),
+        matching=MatchingService(agent, donor_repo, request_repo, finder, ConsoleNotifier(), alert_log,
+                                 clock),
         alert_log=alert_log,
         clock=clock,
         llm_enabled=use_llm,

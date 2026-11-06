@@ -52,7 +52,8 @@ def test_las_alertas_se_registran_en_el_log_y_no_en_el_notificador(clock):
     spy, alert_log = SpyNotifier(), InMemoryAlertLog()
     agent = MatchingAgent([CompatibilityFilter(), EligibilityFilter()], RuleBasedScoring(),
                           WavePlanner(10, 15), TemplateExplanation())
-    matching = MatchingService(agent, donors, requests, spy, alert_log, clock)
+    from donacion.services.request_finder import RequestFinder
+    matching = MatchingService(agent, donors, requests, RequestFinder(requests, clock), spy, alert_log, clock)
 
     alerts = matching.dispatch(request.id)
 
@@ -130,3 +131,20 @@ def test_prompt_de_explicacion_incluye_razones_sin_correo():
     text = ExplanationPromptBuilder().build([candidate], a_request())
     assert "a 1.2 km del hospital" in text and "@" not in text
     assert ExplanationPromptBuilder().system.startswith("Redactas alertas")
+
+
+# ---------- Task 2: eliminar duplicación con RequestFinder ----------
+def test_request_finder_vence_y_rechaza_cerradas(clock):
+    import pytest
+    from donacion.domain.errors import ConflictError, NotFoundError
+    from donacion.services.request_finder import RequestFinder
+    requests = InMemoryRequestRepository()
+    requests.save(a_request(hours=1))
+    finder = RequestFinder(requests, clock)
+    assert finder.get_open("r1").status.value == "abierta"
+    clock.advance(61)
+    assert finder.get("r1").status.value == "vencida"
+    with pytest.raises(ConflictError):
+        finder.get_open("r1")
+    with pytest.raises(NotFoundError):
+        finder.get("no-existe")
