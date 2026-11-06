@@ -7,24 +7,8 @@ from donacion.agent.scoring import LLMAssistedScoring, RuleBasedScoring
 from donacion.agent.waves import WavePlanner
 from donacion.domain.blood_request import BloodRequest, Hospital, Urgency
 from donacion.domain.blood_type import BloodType
-from donacion.ports.llm import LLMClient, LLMUnavailableError
 
-from .conftest import HOSPITAL, NOW, make_donor
-
-
-class FakeLLM(LLMClient):
-    """Doble de prueba: devuelve respuestas fijas o falla, sin llamar a ninguna API."""
-
-    def __init__(self, replies=None, fail=False):
-        self.replies = list(replies or [])
-        self.fail = fail
-        self.calls = 0
-
-    def complete_json(self, system, prompt, schema):
-        self.calls += 1
-        if self.fail:
-            raise LLMUnavailableError("sin servicio")
-        return self.replies.pop(0)
+from .conftest import HOSPITAL, NOW, FakeLLM, make_donor
 
 
 def request(blood="A+", urgency=Urgency.CRITICAL):
