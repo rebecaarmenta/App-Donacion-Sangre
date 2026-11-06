@@ -11,6 +11,7 @@ sin modificar MatchingAgent ni el resto del sistema (principio abierto/cerrado).
 """
 from __future__ import annotations
 
+import os
 from abc import ABC, abstractmethod
 
 from ..ports.llm import LLMClient
@@ -22,8 +23,8 @@ from .waves import WavePlanner
 
 # Parámetros del MVP (documento de visión, secciones 5 y 9).
 MAX_DISTANCE_KM = 50
-WAVE_SIZE = 10
-WAVE_WAIT_MINUTES = 15
+WAVE_SIZE = 10  # se puede cambiar para la demo con DONACION_WAVE_SIZE
+WAVE_WAIT_MINUTES = 15  # se puede cambiar para la demo con DONACION_WAVE_WAIT_MINUTES (p. ej. 0.25 = 15 s)
 
 
 class MatchingAgentFactory(ABC):
@@ -41,7 +42,9 @@ class MatchingAgentFactory(ABC):
         return [CompatibilityFilter(), EligibilityFilter(), MaxDistanceFilter(MAX_DISTANCE_KM)]
 
     def create_planner(self) -> WavePlanner:
-        return WavePlanner(wave_size=WAVE_SIZE, wait_minutes=WAVE_WAIT_MINUTES)
+        wait = float(os.getenv("DONACION_WAVE_WAIT_MINUTES", WAVE_WAIT_MINUTES))
+        size = int(os.getenv("DONACION_WAVE_SIZE", WAVE_SIZE))
+        return WavePlanner(wave_size=size, wait_minutes=wait)
 
     def build(self) -> MatchingAgent:
         return MatchingAgent(

@@ -43,5 +43,5 @@ test("escalamiento: distingue esperar, sin primera oleada y sin donantes", () =>
   assert.equal(describeEscalation([], request(1, ["a", "b"]), cand(["a", "b"])),
     "Ya no quedan donantes compatibles por avisar.");
   assert.equal(describeEscalation([], request(1, ["a"]), cand(["a", "b"])),
-    "Aún no toca otra oleada (espera de 15 minutos).");
+    "Aún no pasa el tiempo de espera para enviar otra oleada.");
 });

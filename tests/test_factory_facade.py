@@ -54,3 +54,28 @@ def test_la_api_solo_depende_de_la_fachada():
     imports = [line for line in source.splitlines() if line.startswith(("from ", "import "))]
     service_imports = [line for line in imports if "services" in line]
     assert service_imports == ["from ..services.platform import DonationPlatform, RegisterDonorCommand"]
+
+
+def test_espera_entre_oleadas_configurable_para_la_demo(monkeypatch):
+    monkeypatch.setenv("DONACION_WAVE_WAIT_MINUTES", "0.25")   # 15 segundos
+    planner = RuleBasedAgentFactory().create_planner()
+    req = request()
+    req.register_wave(["d1"], NOW)
+    assert not planner.is_due(req, NOW + timedelta(seconds=10))
+    assert planner.is_due(req, NOW + timedelta(seconds=15))
+
+
+def test_espera_por_defecto_es_15_minutos(monkeypatch):
+    monkeypatch.delenv("DONACION_WAVE_WAIT_MINUTES", raising=False)
+    planner = RuleBasedAgentFactory().create_planner()
+    req = request()
+    req.register_wave(["d1"], NOW)
+    assert not planner.is_due(req, NOW + timedelta(minutes=14))
+    assert planner.is_due(req, NOW + timedelta(minutes=15))
+
+
+def test_tamano_de_oleada_configurable_para_la_demo(monkeypatch):
+    monkeypatch.setenv("DONACION_WAVE_SIZE", "3")
+    donors = [make_donor(f"d{i}", lat=20.687 + i * 0.001) for i in range(5)]
+    alerts = RuleBasedAgentFactory().build().plan_wave(request(), donors, NOW)
+    assert len(alerts) == 3

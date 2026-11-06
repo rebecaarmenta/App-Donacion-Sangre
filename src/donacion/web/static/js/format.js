@@ -46,5 +46,5 @@ export function describeEscalation(alerts, request, candidates) {
   if (request.waves_sent === 0) return "Primero envía la primera oleada de alertas.";
   const notified = new Set(request.notified_donors);
   if (!candidates.some(c => !notified.has(c.donor_id))) return "Ya no quedan donantes compatibles por avisar.";
-  return "Aún no toca otra oleada (espera de 15 minutos).";
+  return "Aún no pasa el tiempo de espera para enviar otra oleada.";
 }

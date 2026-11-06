@@ -8,7 +8,7 @@ from ..domain.blood_request import BloodRequest
 
 
 class WavePlanner:
-    def __init__(self, wave_size: int = 10, wait_minutes: int = 15) -> None:
+    def __init__(self, wave_size: int = 10, wait_minutes: float = 15) -> None:
         if wave_size < 1 or wait_minutes < 0:
             raise ValueError("Tamaño de oleada o espera inválidos")
         self._wave_size = wave_size

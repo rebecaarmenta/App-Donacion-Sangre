@@ -122,6 +122,8 @@ export ANTHROPIC_API_KEY="tu-clave"     # Windows: set ANTHROPIC_API_KEY=tu-clav
 - Sin clave, todo funciona con reglas. `GET /health` indica si el agente usa IA.
 - Al modelo solo se le envían datos necesarios para decidir (tipo de sangre, distancia, tasa de respuesta); nunca nombres, correos ni ubicación exacta.
 - `DONACION_SEED_DEMO=0` arranca la API sin datos de prueba.
+- `DONACION_WAVE_WAIT_MINUTES` cambia la espera entre oleadas (15 minutos por defecto) y `DONACION_WAVE_SIZE` el tamaño de cada oleada (10 por defecto). Para mostrar el escalamiento en una demo con los donantes de prueba:
+  `DONACION_WAVE_WAIT_MINUTES=0.25 DONACION_WAVE_SIZE=3 python run.py` (oleadas de 3 donantes cada 15 segundos).
 
 ## Endpoints
 
