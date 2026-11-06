@@ -1,16 +1,15 @@
 """Caso de uso: crear solicitudes de sangre y confirmar donaciones."""
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Callable
 
 from ..domain.blood_request import BloodRequest, Hospital, Urgency
 from ..domain.blood_type import BloodType
 from ..domain.errors import NotFoundError, ValidationError
 from ..domain.location import Location
 from ..ports.clock import Clock
+from ..ports.ids import IdGenerator
 from ..ports.repositories import DonorRepository, RequestRepository
 
 
@@ -28,13 +27,12 @@ class CreateRequestCommand:
 
 class RequestService:
     def __init__(self, requests: RequestRepository, donors: DonorRepository, clock: Clock,
-                 donation_interval_days: int,
-                 id_factory: Callable[[], str] = lambda: uuid.uuid4().hex[:8]) -> None:
+                 donation_interval_days: int, ids: IdGenerator) -> None:
         self._requests = requests
         self._donors = donors
         self._clock = clock
         self._interval = timedelta(days=donation_interval_days)
-        self._new_id = id_factory
+        self._ids = ids
 
     def create(self, cmd: CreateRequestCommand) -> BloodRequest:
         try:
@@ -42,7 +40,7 @@ class RequestService:
         except ValueError as exc:
             raise ValidationError("Urgencia inválida: use critica, alta o normal") from exc
         request = BloodRequest(
-            request_id=self._new_id(),
+            request_id=self._ids.new_id(),
             requester_name=cmd.requester_name,
             blood_type=BloodType.parse(cmd.blood_type),
             units_needed=cmd.units_needed,

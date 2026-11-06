@@ -48,7 +48,7 @@ def get_donor(donor_id: str, c: Container = Depends(get_container)):
 @router.get("/donors/{donor_id}/alerts", response_model=list[AlertOut], tags=["donantes"])
 def donor_alerts(donor_id: str, c: Container = Depends(get_container)):
     c.donors.get(donor_id)
-    return [AlertOut.of(a) for a in c.notifier.sent_to(donor_id)]
+    return [AlertOut.of(a) for a in c.matching.alerts_for_donor(donor_id)]
 
 
 # ---------- 2. Cuestionario de tamizaje ----------

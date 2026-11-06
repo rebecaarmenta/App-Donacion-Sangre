@@ -9,14 +9,17 @@ import os
 from dataclasses import dataclass
 
 from .adapters.console_notifier import ConsoleNotifier
+from .adapters.memory_alert_log import InMemoryAlertLog
 from .adapters.memory_repositories import InMemoryDonorRepository, InMemoryRequestRepository
 from .adapters.pbkdf2_hasher import Pbkdf2Hasher
 from .adapters.system_clock import SystemClock
+from .adapters.uuid_ids import UuidIdGenerator
 from .agent.explanation import LLMExplanation, TemplateExplanation
 from .agent.filters import CompatibilityFilter, EligibilityFilter, MaxDistanceFilter
 from .agent.matching_agent import MatchingAgent
 from .agent.scoring import LLMAssistedScoring, RuleBasedScoring
 from .agent.waves import WavePlanner
+from .ports.alert_log import AlertLog
 from .ports.clock import Clock
 from .ports.llm import LLMClient
 from .screening.evaluator import ScreeningEvaluator
@@ -40,7 +43,7 @@ class Container:
     screening: ScreeningService
     requests: RequestService
     matching: MatchingService
-    notifier: ConsoleNotifier
+    alert_log: AlertLog
     clock: Clock
     llm_enabled: bool
 
@@ -60,7 +63,8 @@ def build_container(use_llm: bool | None = None, clock: Clock | None = None,
     clock = clock or SystemClock()
     donor_repo = InMemoryDonorRepository()
     request_repo = InMemoryRequestRepository()
-    notifier = ConsoleNotifier()
+    alert_log = InMemoryAlertLog()
+    ids = UuidIdGenerator()
 
     evaluator = ScreeningEvaluator([
         AgeRule(min_age=18, max_age=65),
@@ -90,11 +94,11 @@ def build_container(use_llm: bool | None = None, clock: Clock | None = None,
     )
 
     return Container(
-        donors=DonorService(donor_repo, Pbkdf2Hasher()),
+        donors=DonorService(donor_repo, Pbkdf2Hasher(), ids),
         screening=ScreeningService(donor_repo, evaluator, clock),
-        requests=RequestService(request_repo, donor_repo, clock, DONATION_INTERVAL_DAYS),
-        matching=MatchingService(agent, donor_repo, request_repo, notifier, clock),
-        notifier=notifier,
+        requests=RequestService(request_repo, donor_repo, clock, DONATION_INTERVAL_DAYS, ids),
+        matching=MatchingService(agent, donor_repo, request_repo, ConsoleNotifier(), alert_log, clock),
+        alert_log=alert_log,
         clock=clock,
         llm_enabled=use_llm,
     )

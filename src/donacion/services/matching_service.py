@@ -5,6 +5,7 @@ from ..agent.matching_agent import MatchingAgent
 from ..domain.alert import Alert, RankedCandidate
 from ..domain.blood_request import BloodRequest
 from ..domain.errors import ConflictError, NotFoundError
+from ..ports.alert_log import AlertLog
 from ..ports.clock import Clock
 from ..ports.notifier import Notifier
 from ..ports.repositories import DonorRepository, RequestRepository
@@ -12,11 +13,12 @@ from ..ports.repositories import DonorRepository, RequestRepository
 
 class MatchingService:
     def __init__(self, agent: MatchingAgent, donors: DonorRepository, requests: RequestRepository,
-                 notifier: Notifier, clock: Clock) -> None:
+                 notifier: Notifier, alert_log: AlertLog, clock: Clock) -> None:
         self._agent = agent
         self._donors = donors
         self._requests = requests
         self._notifier = notifier
+        self._alert_log = alert_log
         self._clock = clock
 
     def preview(self, request_id: str) -> list[RankedCandidate]:
@@ -36,8 +38,12 @@ class MatchingService:
             donor.register_alert()
             self._donors.save(donor)
             self._notifier.send(alert)
+            self._alert_log.record(alert)
         self._requests.save(request)
         return alerts
+
+    def alerts_for_donor(self, donor_id: str) -> list[Alert]:
+        return self._alert_log.for_donor(donor_id)
 
     def escalate_due(self) -> dict[str, list[Alert]]:
         """Revisa las solicitudes abiertas y envía otra oleada a las que no se cubrieron a tiempo."""

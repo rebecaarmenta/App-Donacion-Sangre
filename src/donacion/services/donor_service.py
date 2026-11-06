@@ -1,15 +1,14 @@
 """Caso de uso: registro, autenticación y perfil del donante."""
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
 from datetime import date
-from typing import Callable
 
 from ..domain.blood_type import BloodType
 from ..domain.donor import Donor
 from ..domain.errors import AuthenticationError, ConflictError, NotFoundError, ValidationError
 from ..domain.location import Location
+from ..ports.ids import IdGenerator
 from ..ports.repositories import DonorRepository
 from ..ports.security import PasswordHasher
 
@@ -30,11 +29,10 @@ class RegisterDonorCommand:
 
 
 class DonorService:
-    def __init__(self, repository: DonorRepository, hasher: PasswordHasher,
-                 id_factory: Callable[[], str] = lambda: uuid.uuid4().hex[:8]) -> None:
+    def __init__(self, repository: DonorRepository, hasher: PasswordHasher, ids: IdGenerator) -> None:
         self._repository = repository
         self._hasher = hasher
-        self._new_id = id_factory
+        self._ids = ids
 
     def register(self, cmd: RegisterDonorCommand) -> Donor:
         if len(cmd.password) < MIN_PASSWORD_LENGTH:
@@ -42,7 +40,7 @@ class DonorService:
         if self._repository.find_by_email(cmd.email):
             raise ConflictError("Ya existe un donante con ese correo")
         donor = Donor(
-            donor_id=self._new_id(),
+            donor_id=self._ids.new_id(),
             name=cmd.name,
             email=cmd.email,
             password_hash=self._hasher.hash(cmd.password),
