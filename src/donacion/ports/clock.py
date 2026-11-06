@@ -1,0 +1,10 @@
+"""Puerto de reloj. Permite probar oleadas y vencimientos sin esperar tiempo real."""
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from datetime import datetime
+
+
+class Clock(ABC):
+    @abstractmethod
+    def now(self) -> datetime: ...

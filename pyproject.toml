@@ -1,0 +1,9 @@
+[project]
+name = "donacion-sangre"
+version = "0.1.0"
+description = "MVP de la Plataforma Agéntica de Donación de Sangre (ODS 3)"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
