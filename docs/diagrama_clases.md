@@ -39,7 +39,7 @@ classDiagram
         -_id, _name, _email, _password_hash
         -_birth_date, _weight_kg, _last_donation
         -_eligibility: EligibilityResult
-        -_alerts_received, _alerts_accepted
+        -_history: ResponseHistory
         +age_on(day) int
         +response_rate float
         +can_donate_on(day) bool
@@ -47,6 +47,16 @@ classDiagram
         +register_alert()
         +record_donation(day, next_eligible)
     }
+    class ResponseHistory {
+        <<value object>>
+        +received: int
+        +accepted: int
+        +rate float
+        +with_alert() ResponseHistory
+        +with_acceptance() ResponseHistory
+    }
+    Donor --> ResponseHistory
+
     class BloodRequest {
         -_units_needed, _confirmed_donors
         -_notified_donors, _waves_sent, _last_wave_at
@@ -118,6 +128,14 @@ classDiagram
         <<interface>>
         +rank(donors, request) list~RankedCandidate~
     }
+    class ScoringWeights {
+        <<value object>>
+        +proximity, blood_match, response
+        +compatible_factor, universal_reserve_penalty, reference_km
+    }
+    RuleBasedScoring --> ScoringWeights
+    LLMAssistedScoring --> RerankPromptBuilder
+    LLMExplanation --> ExplanationPromptBuilder
     ScoringStrategy <|.. RuleBasedScoring
     ScoringStrategy <|.. LLMAssistedScoring
     LLMAssistedScoring --> ScoringStrategy : base (respaldo)
@@ -142,6 +160,19 @@ classDiagram
         +is_wave_due(request, now) bool
         +plan_wave(request, donors, now) list~Alert~
     }
+    class MatchingAgentFactory {
+        <<abstract>>
+        +create_scoring()* ScoringStrategy
+        +create_explainer()* ExplanationBuilder
+        +create_filters() list
+        +create_planner() WavePlanner
+        +build() MatchingAgent
+    }
+    MatchingAgentFactory <|-- RuleBasedAgentFactory
+    MatchingAgentFactory <|-- AIAgentFactory
+    MatchingAgentFactory ..> MatchingAgent : crea
+    AIAgentFactory --> LLMClient
+
     MatchingAgent o-- CandidateFilter
     MatchingAgent --> ScoringStrategy
     MatchingAgent --> WavePlanner
@@ -151,6 +182,8 @@ classDiagram
     class DonorRepository { <<interface>> }
     class RequestRepository { <<interface>> }
     class Notifier { <<interface>> }
+    class AlertLog { <<interface>> }
+    class IdGenerator { <<interface>> }
     class LLMClient {
         <<interface>>
         +complete_json(system, prompt, schema) dict
@@ -160,12 +193,39 @@ classDiagram
     DonorRepository <|.. InMemoryDonorRepository
     RequestRepository <|.. InMemoryRequestRepository
     Notifier <|.. ConsoleNotifier
+    AlertLog <|.. InMemoryAlertLog
+    IdGenerator <|.. UuidIdGenerator
     LLMClient <|.. ClaudeLLMClient
     PasswordHasher <|.. Pbkdf2Hasher
     Clock <|.. SystemClock
     Clock <|.. ManualClock
 
     %% ================= SERVICIOS =================
+    class DonationPlatform {
+        <<facade>>
+        +register_donor(cmd) Donor
+        +login(email, password) Donor
+        +submit_screening(donor_id, answers)
+        +create_request_valid_for(hours, ...) BloodRequest
+        +preview_candidates(request_id) list
+        +dispatch_wave(request_id) list
+        +confirm_donation(request_id, donor_id)
+        +escalate() dict
+    }
+    DonationPlatform --> DonorService
+    DonationPlatform --> ScreeningService
+    DonationPlatform --> RequestService
+    DonationPlatform --> MatchingService
+    class RequestFinder {
+        +get(request_id) BloodRequest
+        +get_open(request_id) BloodRequest
+    }
+    RequestService --> RequestFinder
+    MatchingService --> RequestFinder
+    MatchingService --> AlertLog
+    DonorService --> IdGenerator
+    RequestService --> IdGenerator
+
     class DonorService {
         +register(cmd) Donor
         +authenticate(email, password) Donor

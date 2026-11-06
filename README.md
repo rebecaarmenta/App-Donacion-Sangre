@@ -39,11 +39,15 @@ screening/    reglas de la NOM-253 y ScreeningEvaluator (sin IA)
 domain/       entidades y value objects: Donor, BloodRequest, BloodType, Location…
 ports/        interfaces: repositorios, Notifier, LLMClient, PasswordHasher, Clock
 adapters/     implementaciones: memoria, consola, Claude, PBKDF2, reloj
-container.py  composition root: el único lugar que conoce las clases concretas
+container.py  composition root: elige la fábrica del agente y arma la fachada DonationPlatform
 ```
 
 Las dependencias apuntan hacia adentro: el dominio no conoce FastAPI, la base de datos ni la IA.
-Diagrama completo: [docs/diagrama_clases.md](docs/diagrama_clases.md).
+
+Documentación de diseño:
+- [docs/patrones_y_solid.md](docs/patrones_y_solid.md): dónde está cada principio SOLID y cada patrón (Factory Method, Facade, Adapter, Strategy, Template Method, Repository).
+- [docs/refactorizacion.md](docs/refactorizacion.md): bitácora de refactorizaciones (olor de código → técnica → antes/después → commit).
+- [docs/diagrama_clases.md](docs/diagrama_clases.md): diagrama de clases.
 
 ### Principios SOLID
 
@@ -51,7 +55,9 @@ Diagrama completo: [docs/diagrama_clases.md](docs/diagrama_clases.md).
 - **O** – Para agregar una regla, un filtro o una estrategia se crea una clase nueva y se registra en `container.py`, sin modificar el evaluador ni el agente.
 - **L** – `RuleBasedScoring` y `LLMAssistedScoring` (y `TemplateExplanation` / `LLMExplanation`) son intercambiables.
 - **I** – Interfaces pequeñas y separadas: `DonorRepository`, `RequestRepository`, `Notifier`, `LLMClient`, `Clock`.
-- **D** – Los servicios reciben interfaces en el constructor; solo `container.py` crea las clases concretas.
+- **D** – Los servicios reciben interfaces en el constructor; solo `container.py` crea las clases concretas, y la API depende solo de la fachada.
+
+**Patrones:** Factory Method (`agent/factory.py`: `RuleBasedAgentFactory` / `AIAgentFactory`), Facade (`services/platform.py`: `DonationPlatform`), Adapter (`adapters/`), Strategy (puntaje y explicaciones), Template Method (reglas con periodo de espera).
 
 **Encapsulamiento:** los atributos de las entidades son privados y solo cambian con métodos que validan
 (`confirm_unit`, `register_wave`, `update_eligibility`, `record_donation`).
@@ -66,13 +72,14 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-**API** (con 12 donantes de prueba ya cargados):
+**Aplicación en localhost** (con 12 donantes de prueba ya cargados):
 
 ```bash
-uvicorn donacion.main:app --reload --app-dir src
+python run.py
 ```
 
-Abre http://127.0.0.1:8000/docs para probar todos los endpoints desde el navegador.
+Abre http://localhost:8000 en el navegador. La documentación interactiva de la API está en http://localhost:8000/docs.
+Para detenerla: `Ctrl + C`.
 
 **Demo en consola** (registro → tamizaje → solicitud → ranking → oleada → confirmación):
 
