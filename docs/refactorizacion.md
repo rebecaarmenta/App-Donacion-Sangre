@@ -8,7 +8,9 @@ bitácora se hizo así:
 3. El cambio mínimo para que pase (GREEN).
 4. La suite completa otra vez en verde y un commit propio (`git log` muestra cada uno).
 
-Las 39 pruebas originales pasaron antes y después de cada refactorización.
+Las 39 pruebas originales pasaron antes y después de cada refactorización. Los únicos cambios en ellas
+fueron de construcción: `tests/test_api.py` pasó de `build_container` a `build_platform` y el doble de prueba
+`FakeLLM` se movió a `tests/conftest.py`; ninguna aserción cambió.
 
 ---
 
@@ -86,7 +88,7 @@ score = (self._w.proximity * proximity + self._w.blood_match * match
 score -= self._w.universal_reserve_penalty
 ```
 
-**Pruebas:** `test_pesos_por_defecto_conservan_el_orden` (el comportamiento no cambió) y `test_pesos_configurables_cambian_la_prioridad`.
+**Pruebas:** `test_pesos_por_defecto_conservan_el_orden` (fija los puntajes calculados con el código anterior, commit `1dcef3f`; si cambia un peso por defecto, falla) y `test_pesos_configurables_cambian_la_prioridad`.
 
 ---
 
@@ -137,3 +139,4 @@ Con el código limpio se agregaron dos patrones (ver `patrones_y_solid.md`):
 
 - `4b13989` — **Factory Method** para construir el agente (`agent/factory.py`).
 - `a3a0eda` — **Facade** `DonationPlatform` como única entrada de la API (`services/platform.py`).
+- `de24a88` — la API importa también los comandos (`RegisterDonorCommand`) desde la fachada, no desde un servicio.
