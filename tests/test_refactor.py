@@ -110,3 +110,23 @@ def test_pesos_configurables_cambian_la_prioridad():
     assert RuleBasedScoring().rank([cerca, lejos], a_request())[0].donor.id == "cerca"
     only_response = ScoringWeights(proximity=0, blood_match=0, response=100)
     assert RuleBasedScoring(only_response).rank([cerca, lejos], a_request())[0].donor.id == "lejos"
+
+
+# ---------- Task 2: Extract Class constructores de prompts ----------
+def test_prompt_de_orden_no_envia_datos_personales():
+    from donacion.agent.prompts import RerankPromptBuilder
+    from donacion.domain.alert import RankedCandidate
+    candidate = RankedCandidate(make_donor("d7"), 80.0, 1.2, ("a 1.2 km del hospital",))
+    text = RerankPromptBuilder().build([candidate], a_request())
+    assert '"donor_id": "d7"' in text
+    assert "Donante" not in text and "@" not in text
+    assert "order" in RerankPromptBuilder().schema["required"]
+
+
+def test_prompt_de_explicacion_incluye_razones_sin_correo():
+    from donacion.agent.prompts import ExplanationPromptBuilder
+    from donacion.domain.alert import RankedCandidate
+    candidate = RankedCandidate(make_donor("d7"), 80.0, 1.2, ("a 1.2 km del hospital",))
+    text = ExplanationPromptBuilder().build([candidate], a_request())
+    assert "a 1.2 km del hospital" in text and "@" not in text
+    assert ExplanationPromptBuilder().system.startswith("Redactas alertas")
