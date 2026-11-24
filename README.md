@@ -89,17 +89,6 @@ Con `python run.py` abierto, entra a **http://localhost:8000** (redirige a `/app
 - **Soy donante** (`/app/donante.html`): registro, inicio de sesión, perfil con su estado (apto, diferido o no apto), cuestionario de elegibilidad y alertas recibidas con el botón "Confirmo que voy a donar".
 - **Necesito sangre** (`/app/solicitud.html`): crear la solicitud eligiendo hospital y urgencia, ver las alertas de la primera oleada (se envía sola al crear la solicitud), ver a los candidatos que ordenó el agente con sus razones, adelantar la siguiente oleada y ver el estado (por ejemplo, "Cubierta 2/2"). La página se actualiza cada 10 s.
 
-Flujo para la demo:
-1. En **Necesito sangre**, crea una solicitud: Familia Pérez, A+, 2 unidades, Hospital Civil Fray Antonio Alcalde, urgencia crítica. La primera oleada sale de inmediato.
-2. **Ver candidatos**: no aparecen Gabriela Paz (tatuaje reciente), Héctor Luna (donó hace 30 días), Jorge Ríos (peso menor a 50 kg) ni Fernando Gil (B+, incompatible).
-3. Si nadie confirma a tiempo, el servidor envía solo la siguiente oleada (o puedes adelantarla con **Enviar siguiente oleada ahora**).
-4. En otra pestaña, en **Soy donante**, entra como `donante1@demo.mx` / `demo1234` (Ana López) y presiona "Confirmo que voy a donar". Repite con `donante5@demo.mx` (Elena Soto). La solicitud queda **Cubierta 2/2**.
-
-> Al iniciar sesión, el servidor entrega un token firmado con HMAC-SHA256 que vence en 8 horas; el navegador lo guarda en `localStorage` y lo manda como `Authorization: Bearer ...`. Las rutas del donante (`/me...` y `/confirm`) sacan su id del token, nunca del cuerpo ni de la URL. La clave que firma las sesiones se genera la primera vez y se guarda en la base de datos, así que las sesiones siguen valiendo al reiniciar (o se puede fijar con `DONACION_TOKEN_SECRET`).
-> Quien crea una solicitud no tiene cuenta: el servidor le entrega un `manage_token` firmado (válido hasta un día después de la fecha límite) y solo con él se ven los candidatos y las alertas o se adelantan oleadas. Un token de donante no sirve para esto ni al revés.
-> El hospital de una solicitud se elige del catálogo del servidor (`GET /hospitals`, `hospital_id`). No se acepta texto libre porque su nombre llega al modelo de IA que redacta las alertas.
-> Los datos se guardan en **SQLite**, en el archivo `donacion.sqlite3` de la raíz del proyecto (`DONACION_DB` cambia la ruta). Sobreviven a los reinicios; los donantes de prueba solo se cargan si la base está vacía. Para empezar desde cero, detén el servidor y borra `donacion.sqlite3`. Las pruebas y la demo en consola usan una base temporal en memoria y nunca tocan ese archivo.
-
 **Demo en consola** (registro → tamizaje → solicitud → ranking → oleada → confirmación):
 
 ```bash
@@ -157,12 +146,3 @@ ollama serve              # si no está corriendo ya como servicio
 🔒 = requiere `Authorization: Bearer <access_token>` (sesión del donante).
 🔑 = requiere `X-Request-Token: <manage_token>` (solo quien creó la solicitud; la página lo guarda sola).
 
-## Datos de prueba
-
-`src/donacion/demo.py` carga 12 donantes ficticios en Guadalajara (contraseña `demo1234`,
-correos `donante1@demo.mx` a `donante12@demo.mx`). Incluye casos para la demo: una donante con tatuaje
-reciente (diferida), uno que donó hace 30 días (diferido), uno con peso menor a 50 kg (no apto),
-una donante O- (reservada si la urgencia no es crítica) y tipos incompatibles.
-
-> Los plazos del tamizaje (12 meses por tatuaje, 6 por cirugía, 5 días por medicamento, 56 días entre
-> donaciones) son configurables en `container.py` y deben verificarse contra la NOM-253 vigente.
