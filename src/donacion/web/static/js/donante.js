@@ -1,12 +1,12 @@
 // Página del donante: conecta donante.html con la API. La lógica probable vive en los otros módulos.
 import { ApiError, createApi } from "./api.js";
 import { BLOOD_TYPES, ZONES } from "./catalogs.js";
-import { eligibilityText, escapeHtml, statusLabel, urgencyLabel } from "./format.js";
-import { buildDonorPayload, buildScreeningPayload } from "./payloads.js";
+import { describeImpact, describeProfileSaved, eligibilityText, escapeHtml, statusLabel, urgencyLabel } from "./format.js";
+import { buildDonorPayload, buildProfilePayload, buildScreeningPayload } from "./payloads.js";
 import { createSession, sessionAfterError } from "./session.js";
 
-const api = createApi();
 const session = createSession(window.localStorage);
+const api = createApi(undefined, session.get);
 const $ = id => document.getElementById(id);
 
 function showMessage(text, kind = "ok") {
@@ -33,7 +33,7 @@ function handleError(error) {
   if (error instanceof ApiError && session.get() && sessionAfterError(error.status) === "clear") {
     session.clear();
     showLoggedOut();
-    showMessage("Tu sesión ya no es válida (el servidor se reinició). Entra o regístrate de nuevo.", "error");
+    showMessage("Tu sesión ya no es válida (venció o el servidor se reinició). Entra o regístrate de nuevo.", "error");
     return;
   }
   showMessage(error.message || "Ocurrió un error inesperado.", "error");
@@ -44,7 +44,22 @@ function showLoggedOut() {
   $("seccion-perfil").classList.add("oculto");
 }
 
+// El perfil se recarga cada 15 s: no se pisa lo que el donante está escribiendo.
+let profileFormDirty = false;
+let currentDonor = null;  // el perfil tal como se mostró; sirve para comparar antes y después de guardar
+
+function fillProfileForm(donor) {
+  if (profileFormDirty) return;
+  const form = $("form-perfil").elements;
+  form.name.value = donor.name;
+  form.weight_kg.value = donor.weight_kg;
+  form.zone.value = "";
+  form.last_donation.value = donor.last_donation ?? "";
+}
+
 function renderProfile(donor) {
+  currentDonor = donor;
+  fillProfileForm(donor);
   $("perfil-nombre").textContent = donor.name;
   $("perfil-tipo").textContent = donor.blood_type;
   const badge = $("perfil-estado");
@@ -55,7 +70,7 @@ function renderProfile(donor) {
 
 async function renderAlerts(donorId) {
   const list = $("lista-alertas");
-  const alerts = await api.getAlerts(donorId);
+  const alerts = await api.getAlerts();
   if (!alerts.length) {
     list.innerHTML = '<li class="meta">Todavía no tienes alertas. Te avisaremos cuando alguien te necesite.</li>';
     return;
@@ -79,12 +94,19 @@ async function renderAlerts(donorId) {
   }).join("");
 }
 
+async function renderDonations() {
+  const history = await api.getDonations();
+  $("historial-resumen").textContent = describeImpact(history);
+  $("lista-donaciones").innerHTML = history.donations.map(d => `
+    <li><strong>${escapeHtml(d.date)}</strong> · ${escapeHtml(d.hospital ?? "Hospital no registrado")}</li>`).join("");
+}
+
 async function loadProfile() {
-  const donorId = session.get();
-  if (!donorId) return showLoggedOut();
+  if (!session.get()) return showLoggedOut();
   try {
-    renderProfile(await api.getDonor(donorId));
-    await renderAlerts(donorId);
+    const donor = await api.getMe();
+    renderProfile(donor);
+    await Promise.all([renderAlerts(donor.id), renderDonations()]);
     $("seccion-acceso").classList.add("oculto");
     $("seccion-perfil").classList.remove("oculto");
   } catch (error) {
@@ -99,7 +121,7 @@ $("form-registro").addEventListener("submit", async event => {
   const zone = ZONES.find(z => z.id === data.zone);
   try {
     const donor = await api.registerDonor(buildDonorPayload(data, zone));
-    session.set(donor.id);
+    session.set((await api.login(data.email, data.password)).access_token);
     event.target.reset();
     showMessage(`¡Bienvenida/o, ${donor.name}! Ahora contesta el cuestionario para saber si puedes donar.`);
     await loadProfile();
@@ -112,8 +134,7 @@ $("form-acceso").addEventListener("submit", async event => {
   event.preventDefault();
   const { email, password } = formData(event.target);
   try {
-    const donor = await api.login(email, password);
-    session.set(donor.id);
+    session.set((await api.login(email, password)).access_token);
     event.target.reset();
     clearMessage();
     await loadProfile();
@@ -127,8 +148,26 @@ $("form-tamizaje").addEventListener("submit", async event => {
   const data = formData(event.target);
   data.permanent_exclusion = event.target.elements.permanent_exclusion.checked;
   try {
-    const result = await api.submitScreening(session.get(), buildScreeningPayload(data));
+    const result = await api.submitScreening(buildScreeningPayload(data));
     showMessage(eligibilityText(result), result.status === "apto" ? "ok" : "error");
+    await loadProfile();
+  } catch (error) {
+    handleError(error);
+  }
+});
+
+$("form-perfil").addEventListener("input", () => { profileFormDirty = true; });
+
+$("form-perfil").addEventListener("submit", async event => {
+  event.preventDefault();
+  const data = formData(event.target);
+  const zone = ZONES.find(z => z.id === data.zone);
+  try {
+    const before = currentDonor;
+    const donor = await api.updateProfile(buildProfilePayload(data, zone));
+    profileFormDirty = false;
+    const { text, kind } = describeProfileSaved(before, donor);
+    showMessage(text, kind);
     await loadProfile();
   } catch (error) {
     handleError(error);
@@ -140,7 +179,7 @@ $("lista-alertas").addEventListener("click", async event => {
   if (!button) return;
   button.disabled = true;
   try {
-    const request = await api.confirm(button.dataset.request, session.get());
+    const request = await api.confirm(button.dataset.request);
     showMessage(`¡Gracias! Tu donación quedó confirmada (${request.units_confirmed}/${request.units_needed} unidades).`);
     await loadProfile();
   } catch (error) {
@@ -162,4 +201,8 @@ fillSelect(document.querySelector('#form-registro select[name="blood_type"]'),
   BLOOD_TYPES.map(t => ({ value: t, label: t })));
 fillSelect(document.querySelector('#form-registro select[name="zone"]'),
   ZONES.map(z => ({ value: z.id, label: z.name })));
+fillSelect(document.querySelector('#form-perfil select[name="zone"]'),
+  [{ value: "", label: "Sin cambiar" }, ...ZONES.map(z => ({ value: z.id, label: z.name }))]);
 loadProfile();
+// Las oleadas pueden llegar en cualquier momento (escalamiento automático): revisa cada 15 s.
+setInterval(() => { if (session.get() && !document.hidden) loadProfile(); }, 15000);

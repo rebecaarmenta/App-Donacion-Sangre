@@ -47,7 +47,6 @@
           <label>Correo <input name="email" type="email" required></label>
           <label>Contraseña <input name="password" type="password" required></label>
           <button class="btn" type="submit">Entrar</button>
-          <p class="ayuda">Cuentas de prueba: donante1@demo.mx a donante12@demo.mx, contraseña demo1234.</p>
         </form>
       </div>
     </section>
@@ -66,6 +65,21 @@
         <button id="btn-salir" class="btn-secundario" type="button">Cerrar sesión</button>
       </div>
 
+      <form id="form-perfil" class="card">
+        <h2>Editar mi perfil</h2>
+        <p class="ayuda">Si cambias tu peso o tu última donación, tendrás que contestar otra vez el cuestionario.
+          El correo, el tipo de sangre y la fecha de nacimiento no se pueden cambiar.</p>
+        <div class="campos">
+          <label>Nombre completo <input name="name" required></label>
+          <label>Peso (kg) <input name="weight_kg" type="number" min="1" step="0.1" required></label>
+        </div>
+        <div class="campos">
+          <label>Zona donde vives <select name="zone"></select></label>
+          <label>Última donación <input name="last_donation" type="date"></label>
+        </div>
+        <button class="btn" type="submit">Guardar cambios</button>
+      </form>
+
       <form id="form-tamizaje" class="card">
         <h2>Cuestionario de elegibilidad</h2>
         <p class="ayuda">Deja vacío lo que no aplique. Tu edad, peso y última donación se toman de tu perfil.</p>
@@ -80,6 +94,12 @@
       </form>
 
       <div class="card">
+        <h2>Mi historial de donaciones</h2>
+        <p id="historial-resumen" class="ayuda"></p>
+        <ul id="lista-donaciones" class="lista"></ul>
+      </div>
+
+      <div class="card">
         <div class="resumen">
           <h2>Mis alertas</h2>
           <button id="btn-actualizar" class="btn-secundario" type="button">Actualizar</button>
@@ -89,7 +109,6 @@
     </section>
   </main>
 
-  <footer>MVP · Diseño de Software · ITESO · ODS 3 Salud y Bienestar</footer>
   <script type="module" src="js/donante.js"></script>
 </body>
 </html>

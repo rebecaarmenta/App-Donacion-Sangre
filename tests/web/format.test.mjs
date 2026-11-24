@@ -33,15 +33,34 @@ test("oleadas", () => {
   assert.equal(describeDispatch([{ wave: 1 }]), "Oleada 1 enviada a 1 donante.");
 });
 
-import { describeEscalation } from "../../src/donacion/web/static/js/format.js";
+import { describeCreated, describeImpact, describeProfileSaved } from "../../src/donacion/web/static/js/format.js";
 
-test("escalamiento: distingue esperar, sin primera oleada y sin donantes", () => {
-  const request = (waves, notified) => ({ waves_sent: waves, notified_donors: notified });
-  const cand = ids => ids.map(id => ({ donor_id: id }));
-  assert.equal(describeEscalation([{ wave: 2 }], request(1, ["a"]), cand(["a", "b"])), "Oleada 2 enviada a 1 donante.");
-  assert.equal(describeEscalation([], request(0, []), cand(["a"])), "Primero envía la primera oleada de alertas.");
-  assert.equal(describeEscalation([], request(1, ["a", "b"]), cand(["a", "b"])),
-    "Ya no quedan donantes compatibles por avisar.");
-  assert.equal(describeEscalation([], request(1, ["a"]), cand(["a", "b"])),
-    "Aún no pasa el tiempo de espera para enviar otra oleada.");
+test("perfil guardado: solo pide repetir el cuestionario si el cambio lo invalidó", () => {
+  const status = s => ({ eligibility: { status: s } });
+  const repetir = { text: "Guardamos tus cambios. Como cambiaste tu peso o tu última donación, contesta de nuevo el cuestionario.", kind: "error" };
+  const ok = { text: "Guardamos tus cambios.", kind: "ok" };
+  assert.deepEqual(describeProfileSaved(status("apto"), status("pendiente")), repetir);
+  assert.deepEqual(describeProfileSaved(status("diferido"), status("pendiente")), repetir);
+  // una cuenta nueva ya estaba pendiente: cambiar su nombre o zona no es "cambiaste tu peso"
+  assert.deepEqual(describeProfileSaved(status("pendiente"), status("pendiente")), ok);
+  assert.deepEqual(describeProfileSaved(status("apto"), status("apto")), ok);
+  assert.deepEqual(describeProfileSaved(null, status("pendiente")), ok);
+});
+
+test("impacto: cuenta donaciones y solicitudes cubiertas", () => {
+  assert.equal(describeImpact({ total: 0, requests_covered: 0 }), "Aún no tienes donaciones registradas en la app.");
+  assert.equal(describeImpact({ total: 1, requests_covered: 0 }), "Has donado 1 vez.");
+  assert.equal(describeImpact({ total: 3, requests_covered: 2 }),
+    "Has donado 3 veces y ayudaste a cubrir 2 solicitudes.");
+  assert.equal(describeImpact({ total: 2, requests_covered: 1 }),
+    "Has donado 2 veces y ayudaste a cubrir 1 solicitud.");
+});
+
+test("al crear: dice a cuántos avisó o que no hubo a quién", () => {
+  assert.equal(describeCreated({ notified_donors: ["a", "b"] }),
+    "Solicitud creada. El agente ya avisó a 2 donantes (oleada 1).");
+  assert.equal(describeCreated({ notified_donors: ["a"] }),
+    "Solicitud creada. El agente ya avisó a 1 donante (oleada 1).");
+  assert.equal(describeCreated({ notified_donors: [] }),
+    "Solicitud creada, pero no hay donantes compatibles, aptos y cercanos por avisar.");
 });

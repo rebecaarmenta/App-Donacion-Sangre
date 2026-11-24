@@ -62,8 +62,8 @@ def test_las_alertas_se_registran_en_el_log_y_no_en_el_notificador(clock):
     assert alert_log.for_request(request.id) == alerts
 
 
-def test_ids_inyectados():
-    service = DonorService(InMemoryDonorRepository(), Pbkdf2Hasher(), SequentialIds("d"))
+def test_ids_inyectados(clock):
+    service = DonorService(InMemoryDonorRepository(), Pbkdf2Hasher(), SequentialIds("d"), clock, 56)
     donor = service.register(RegisterDonorCommand(
         name="Ana López", email="ana@demo.mx", password="segura123", birth_date=date(2000, 1, 1),
         weight_kg=60, blood_type="O+", lat=20.67, lon=-103.34))

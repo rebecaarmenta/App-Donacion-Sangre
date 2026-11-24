@@ -1,4 +1,4 @@
-"""Notificador del MVP: escribe la alerta en el log del servidor.
+"""Notificador por consola: escribe la alerta en el log del servidor.
 En una versión posterior se sustituye por notificaciones push sin tocar los servicios.
 Guardar el historial de alertas es responsabilidad de AlertLog, no de esta clase."""
 from __future__ import annotations

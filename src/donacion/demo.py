@@ -28,6 +28,9 @@ _DONORS = [
 
 
 def seed_demo(platform: DonationPlatform) -> None:
+    """Carga los donantes de prueba solo si la base de datos está vacía (no duplica al reiniciar)."""
+    if platform.list_donors():
+        return
     today = platform.clock.now().date()
     for i, (name, blood, birth, weight, lat, lon, days_since, answers) in enumerate(_DONORS, start=1):
         last = today - timedelta(days=days_since) if days_since else None

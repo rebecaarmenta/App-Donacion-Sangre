@@ -2,15 +2,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from ..domain.blood_request import BloodRequest, Hospital, Urgency
+from ..domain.blood_request import BloodRequest, Urgency
 from ..domain.blood_type import BloodType
-from ..domain.errors import NotFoundError, ValidationError
-from ..domain.location import Location
+from ..domain.errors import ValidationError
 from ..ports.clock import Clock
 from ..ports.ids import IdGenerator
-from ..ports.repositories import DonorRepository, RequestRepository
+from ..ports.repositories import RequestRepository
+from .hospital_catalog import HospitalCatalog
 from .request_finder import RequestFinder
 
 
@@ -19,21 +19,18 @@ class CreateRequestCommand:
     requester_name: str
     blood_type: str
     units_needed: int
-    hospital_name: str
-    hospital_lat: float
-    hospital_lon: float
+    hospital_id: str
     urgency: str
     deadline: datetime
 
 
 class RequestService:
-    def __init__(self, requests: RequestRepository, finder: RequestFinder, donors: DonorRepository,
-                 clock: Clock, donation_interval_days: int, ids: IdGenerator) -> None:
+    def __init__(self, requests: RequestRepository, finder: RequestFinder, hospitals: HospitalCatalog,
+                 clock: Clock, ids: IdGenerator) -> None:
         self._requests = requests
         self._finder = finder
-        self._donors = donors
+        self._hospitals = hospitals
         self._clock = clock
-        self._interval = timedelta(days=donation_interval_days)
         self._ids = ids
 
     def create(self, cmd: CreateRequestCommand) -> BloodRequest:
@@ -46,7 +43,7 @@ class RequestService:
             requester_name=cmd.requester_name,
             blood_type=BloodType.parse(cmd.blood_type),
             units_needed=cmd.units_needed,
-            hospital=Hospital(cmd.hospital_name, Location(cmd.hospital_lat, cmd.hospital_lon)),
+            hospital=self._hospitals.get(cmd.hospital_id),
             urgency=urgency,
             deadline=cmd.deadline,
             created_at=self._clock.now(),
@@ -57,14 +54,9 @@ class RequestService:
     def get(self, request_id: str) -> BloodRequest:
         return self._finder.get(request_id)
 
-    def confirm_donation(self, request_id: str, donor_id: str) -> BloodRequest:
+    def confirm_unit(self, request_id: str, donor_id: str) -> BloodRequest:
+        """Solo cuenta la unidad en la solicitud; lo que le pasa al donante lo decide DonorService."""
         request = self.get(request_id)
-        donor = self._donors.get(donor_id)
-        if donor is None:
-            raise NotFoundError(f"No existe el donante {donor_id}")
         request.confirm_unit(donor_id)
-        today = self._clock.now().date()
-        donor.record_donation(today, today + self._interval)
         self._requests.save(request)
-        self._donors.save(donor)
         return request

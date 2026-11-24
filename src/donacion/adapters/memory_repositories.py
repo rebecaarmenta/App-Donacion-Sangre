@@ -1,4 +1,4 @@
-"""Repositorios en memoria para el MVP. Para usar una base de datos real basta con
+"""Repositorios en memoria. Para usar una base de datos real basta con
 crear otra clase que implemente el mismo puerto y cambiarla en container.py."""
 from __future__ import annotations
 

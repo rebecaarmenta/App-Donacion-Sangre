@@ -5,30 +5,50 @@
 from __future__ import annotations
 
 import logging
-import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
 
+from .adapters.escalation_scheduler import EscalationScheduler
 from .api.routes import router
+from .api.static_files import NoCacheStaticFiles
+from .config import Settings
 from .container import build_platform
-from .domain.errors import AuthenticationError, ConflictError, DomainError, NotFoundError
+from .domain.errors import AuthenticationError, ConflictError, DomainError, ForbiddenError, NotFoundError
 from .services.platform import DonationPlatform
 
 WEB_DIR = Path(__file__).parent / "web" / "static"
 
-_STATUS = {NotFoundError: 404, ConflictError: 409, AuthenticationError: 401}
+_STATUS = {NotFoundError: 404, ConflictError: 409, AuthenticationError: 401, ForbiddenError: 403}
 
 
-def create_app(platform: DonationPlatform | None = None) -> FastAPI:
+def create_app(platform: DonationPlatform | None = None, auto_escalate: bool = False,
+               escalation_check_seconds: float = 30.0) -> FastAPI:
+    """auto_escalate=True revisa cada escalation_check_seconds si toca enviar otra oleada.
+    Solo corre mientras el servidor está levantado (lifespan)."""
+    platform = platform or build_platform()
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        if not auto_escalate:
+            yield
+            return
+        scheduler = EscalationScheduler(platform.escalate, escalation_check_seconds)
+        scheduler.start()
+        try:
+            yield
+        finally:
+            scheduler.stop()
+
     app = FastAPI(
-        title="Plataforma Agéntica de Donación de Sangre - MVP",
+        lifespan=lifespan,
+        title="Plataforma Agéntica de Donación de Sangre",
         description="Registro de donantes, tamizaje (NOM-253), solicitudes y agente de priorización.",
-        version="0.1.0",
+        version="1.0.0",
     )
-    app.state.platform = platform or build_platform()
+    app.state.platform = platform
 
     @app.exception_handler(DomainError)
     def domain_error_handler(_: Request, exc: DomainError) -> JSONResponse:
@@ -36,7 +56,7 @@ def create_app(platform: DonationPlatform | None = None) -> FastAPI:
         return JSONResponse(status_code=status, content={"detail": str(exc)})
 
     app.include_router(router)
-    app.mount("/app", StaticFiles(directory=WEB_DIR, html=True), name="web")
+    app.mount("/app", NoCacheStaticFiles(directory=WEB_DIR, html=True), name="web")
 
     @app.get("/", include_in_schema=False)
     def home() -> RedirectResponse:
@@ -46,8 +66,10 @@ def create_app(platform: DonationPlatform | None = None) -> FastAPI:
 
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-app = create_app()
+settings = Settings.from_env()
+app = create_app(build_platform(settings=settings), auto_escalate=settings.auto_escalate,
+                 escalation_check_seconds=settings.escalation_check_seconds)
 
-if os.getenv("DONACION_SEED_DEMO", "1") == "1":
+if settings.seed_demo:
     from .demo import seed_demo
     seed_demo(app.state.platform)

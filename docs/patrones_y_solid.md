@@ -1,4 +1,4 @@
-# Programación orientada a objetos, SOLID y patrones en el MVP
+# Programación orientada a objetos, SOLID y patrones
 
 Este documento señala **dónde** está en el código cada concepto visto en clase y **por qué** se usó.
 Todas las rutas son relativas a `src/donacion/`.
@@ -33,6 +33,8 @@ Cada clase tiene una sola razón para cambiar.
 
 - Cada regla de la NOM-253 es una clase: `AgeRule`, `WeightRule`, `TattooRule`… (`screening/rules.py`).
 - `MatchingAgent` decide, `MatchingService` coordina y guarda, `Notifier` envía y `AlertLog` recuerda.
+- Confirmar una donación: `RequestService.confirm_unit()` solo cuenta la unidad en la solicitud y `DonorService.record_donation()` solo difiere al donante; la fachada `DonationPlatform.confirm_donation()` coordina ambos. Antes `RequestService` hacía las dos cosas y guardaba en dos repositorios.
+- `AuthService` abre la sesión y reconoce al donante por su token; `HospitalCatalog` es la única fuente de los hospitales.
 - Refactorizaciones que aplicaron SRP: `ResponseHistory` salió de `Donor`; `RerankPromptBuilder` y `ExplanationPromptBuilder` salieron de las estrategias de IA; `AlertLog` salió de `ConsoleNotifier` (ver `refactorizacion.md`).
 
 ### O — Abierto/cerrado
@@ -48,6 +50,7 @@ Cualquier subclase puede usarse donde se espera la clase base sin romper nada.
 - `RuleBasedScoring` y `LLMAssistedScoring` son intercambiables como `ScoringStrategy`; `TemplateExplanation` y `LLMExplanation` como `ExplanationBuilder`.
 - Prueba: `tests/test_factory_facade.py::test_las_fabricas_son_intercambiables` usa las dos fábricas en el mismo código y obtiene el mismo resultado.
 - Esto hace posible la tolerancia a fallos: si la IA falla, se usa la implementación por reglas en su lugar.
+- Repositorios: `tests/test_sqlite.py` corre **las mismas pruebas de contrato** contra la versión en memoria y contra SQLite; las dos pasan igual, así que una sustituye a la otra.
 
 ### I — Segregación de interfaces
 Las interfaces son pequeñas y específicas en lugar de un "DataManager" gigante: `DonorRepository`, `RequestRepository`, `Notifier` (solo `send`), `AlertLog`, `LLMClient` (solo `complete_json`), `Clock` (solo `now`) e `IdGenerator` (solo `new_id`).
@@ -83,8 +86,8 @@ Misma estructura que el ejemplo de clase (`Mundo` → `ModoCreativo`):
 **Diferencia con Adapter:** la fachada **simplifica** un subsistema propio; el adaptador **traduce** una interfaz ajena a la que el sistema espera.
 
 ### Adapter — `adapters/`
-- `adapters/claude_llm_client.py` → `ClaudeLLMClient` adapta la SDK de Anthropic al puerto `LLMClient`. Si se cambia de proveedor de IA, solo cambia este archivo.
-- `adapters/memory_repositories.py`, `pbkdf2_hasher.py`, `system_clock.py`, `uuid_ids.py` adaptan almacenamiento, cifrado, reloj e identificadores a sus puertos.
+- `adapters/ollama_llm_client.py` → `OllamaLLMClient` adapta la API HTTP de Ollama (modelo local) al puerto `LLMClient`. Si se cambia de modelo o de servidor de IA, solo cambia este archivo.
+- `adapters/memory_repositories.py`, `pbkdf2_hasher.py`, `hmac_tokens.py`, `system_clock.py`, `uuid_ids.py` adaptan almacenamiento, cifrado, tokens de sesión, reloj e identificadores a sus puertos.
 
 ### Strategy — `agent/scoring.py`, `agent/explanation.py`
 Familias de algoritmos intercambiables: cómo ordenar candidatos y cómo redactar alertas. El agente recibe la estrategia y no sabe cuál es.
@@ -93,11 +96,14 @@ Familias de algoritmos intercambiables: cómo ordenar candidatos y cómo redacta
 - `_WaitingPeriodRule.evaluate()` define el algoritmo "si hubo un evento, esperar hasta cierta fecha"; las subclases solo implementan `_event_date()` y `_until()`.
 - `MatchingAgentFactory.build()` define cómo se arma el agente; las subclases deciden las piezas.
 
+### Decorator — `adapters/retrying_notifier.py`
+`RetryingNotifier` implementa `Notifier` y envuelve a otro `Notifier` para agregarle reintentos con espera creciente. Ni `ConsoleNotifier` ni `MatchingService` cambian; el contenedor decide si se envuelve.
+
 ### Repository — `ports/repositories.py`
-El dominio guarda y busca entidades a través de una interfaz; hoy en memoria, mañana una base de datos, sin tocar servicios.
+El dominio guarda y busca entidades a través de una interfaz. La app usa SQLite (`adapters/sqlite_repositories.py`: `SqliteDonorRepository`, `SqliteRequestRepository`, `SqliteAlertLog`) y existen también las versiones en memoria; los servicios no saben cuál reciben. Las entidades se reconstruyen con su método de clase `restore()`, así el repositorio no rompe su encapsulamiento.
 
 ### Inyección de dependencias + Composition Root — `container.py`
-Todas las dependencias se pasan por constructor. `build_platform()` arma el sistema completo en un solo lugar.
+Todas las dependencias se pasan por constructor. `PlatformBuilder` arma el sistema completo en un solo lugar a partir de un objeto `Settings` (`config.py`), que es la única clase que lee variables de entorno y las valida al arrancar. Ninguna otra clase llama a `os.getenv`.
 
 ### Value Object (DDD)
 Objetos inmutables definidos por su valor: `BloodType`, `Location`, `EligibilityResult`, `ResponseHistory`, `ScoringWeights`, `Alert` (`@dataclass(frozen=True)`).

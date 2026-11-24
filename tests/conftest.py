@@ -1,4 +1,9 @@
+import os
 from datetime import date, datetime
+
+# Las pruebas nunca tocan la base de datos real del proyecto: SQLite en memoria.
+# Va antes de cualquier import de la app porque donacion.main arma la app al importarse.
+os.environ["DONACION_DB"] = ":memory:"
 
 import pytest
 

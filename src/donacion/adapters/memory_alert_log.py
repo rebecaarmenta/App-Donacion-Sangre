@@ -1,4 +1,4 @@
-"""Registro de alertas en memoria para el MVP."""
+"""Registro de alertas en memoria."""
 from __future__ import annotations
 
 from ..domain.alert import Alert

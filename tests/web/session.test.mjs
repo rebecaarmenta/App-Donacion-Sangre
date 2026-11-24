@@ -7,9 +7,10 @@ const memoryStorage = () => { const m = new Map();
 
 test("guarda, lee y borra", () => {
   const s = createSession(memoryStorage());
-  assert.equal(s.get(), null); s.set("abc"); assert.equal(s.get(), "abc"); s.clear(); assert.equal(s.get(), null);
+  assert.equal(s.get(), null); s.set("tok.firma"); assert.equal(s.get(), "tok.firma"); s.clear(); assert.equal(s.get(), null);
 });
-test("404 cierra la sesión", () => {
+test("401 (token vencido o inválido) y 404 cierran la sesión", () => {
+  assert.equal(sessionAfterError(401), "clear");
   assert.equal(sessionAfterError(404), "clear");
   assert.equal(sessionAfterError(409), "keep");
 });

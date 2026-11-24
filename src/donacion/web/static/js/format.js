@@ -40,11 +40,30 @@ export function describeDispatch(alerts) {
   return `Oleada ${alerts[0].wave} enviada a ${n} ${n === 1 ? "donante" : "donantes"}.`;
 }
 
-// Explica el resultado de "Revisar escalamiento" sin decir "espera" cuando ya no hay a quién avisar.
-export function describeEscalation(alerts, request, candidates) {
-  if (alerts.length) return describeDispatch(alerts);
-  if (request.waves_sent === 0) return "Primero envía la primera oleada de alertas.";
-  const notified = new Set(request.notified_donors);
-  if (!candidates.some(c => !notified.has(c.donor_id))) return "Ya no quedan donantes compatibles por avisar.";
-  return "Aún no pasa el tiempo de espera para enviar otra oleada.";
+// Mensaje al guardar el perfil. Solo pide repetir el cuestionario si ESTE cambio invalidó un
+// resultado que ya tenía (apto, diferido o no apto pasa a pendiente). Una cuenta nueva ya está
+// pendiente y cambiar su nombre o su zona no debe decir "cambiaste tu peso".
+export function describeProfileSaved(before, after) {
+  const wasScreened = before && before.eligibility.status !== "pendiente";
+  if (wasScreened && after.eligibility.status === "pendiente") {
+    return { text: "Guardamos tus cambios. Como cambiaste tu peso o tu última donación, contesta de nuevo el cuestionario.",
+      kind: "error" };
+  }
+  return { text: "Guardamos tus cambios.", kind: "ok" };
+}
+
+// Resumen del impacto del donante (historial de donaciones).
+export function describeImpact(history) {
+  const { total, requests_covered: covered } = history;
+  if (!total) return "Aún no tienes donaciones registradas en la app.";
+  const veces = `Has donado ${total} ${total === 1 ? "vez" : "veces"}`;
+  if (!covered) return `${veces}.`;
+  return `${veces} y ayudaste a cubrir ${covered} ${covered === 1 ? "solicitud" : "solicitudes"}.`;
+}
+
+// Mensaje al crear la solicitud: la primera oleada ya salió.
+export function describeCreated(request) {
+  const n = request.notified_donors.length;
+  if (!n) return "Solicitud creada, pero no hay donantes compatibles, aptos y cercanos por avisar.";
+  return `Solicitud creada. El agente ya avisó a ${n} ${n === 1 ? "donante" : "donantes"} (oleada 1).`;
 }

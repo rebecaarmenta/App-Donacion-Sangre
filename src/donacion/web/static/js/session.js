@@ -1,16 +1,18 @@
-// Sesión del donante para el MVP: solo guarda su id en el almacenamiento del navegador (sin tokens).
+// Sesión del donante: guarda el token firmado que entrega /auth/login (no el id del donante).
+// El servidor saca el id del token, así que cambiar lo guardado aquí no permite actuar como otra persona.
 
-const KEY = "donacion.donorId";
+const KEY = "donacion.token";
 
 export function createSession(storage) {
   return {
     get: () => storage.getItem(KEY),
-    set: donorId => storage.setItem(KEY, donorId),
+    set: token => storage.setItem(KEY, token),
     clear: () => storage.removeItem(KEY),
   };
 }
 
-// Los datos del servidor viven en memoria: tras reiniciarlo, el donante guardado ya no existe (404).
+// 401: el token venció o no es válido (p. ej. el servidor se reinició con otra clave).
+// 404: los datos viven en memoria y el donante ya no existe.
 export function sessionAfterError(status) {
-  return status === 404 ? "clear" : "keep";
+  return status === 401 || status === 404 ? "clear" : "keep";
 }

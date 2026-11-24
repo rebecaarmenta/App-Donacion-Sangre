@@ -4,10 +4,11 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..domain.alert import Alert, RankedCandidate
 from ..domain.blood_request import BloodRequest
+from ..domain.donation import DonationHistory
 from ..domain.donor import Donor
 from ..domain.eligibility import EligibilityResult
 
@@ -25,6 +26,17 @@ class DonorIn(BaseModel):
     last_donation: date | None = None
 
 
+class ProfileUpdateIn(BaseModel):
+    """Solo los campos que se envían cambian. Correo, tipo de sangre y nacimiento no se editan."""
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, max_length=120)
+    weight_kg: float | None = Field(default=None, gt=0)
+    lat: float | None = None
+    lon: float | None = None
+    last_donation: date | None = None
+
+
 class LoginIn(BaseModel):
     email: str
     password: str
@@ -38,18 +50,15 @@ class ScreeningIn(BaseModel):
 
 
 class RequestIn(BaseModel):
-    requester_name: str = Field(examples=["Familia Pérez"])
+    # Campos de más (p. ej. un hospital_name escrito a mano) se rechazan con 422.
+    model_config = ConfigDict(extra="forbid")
+
+    requester_name: str = Field(min_length=1, max_length=120, examples=["Familia Pérez"])
     blood_type: str = Field(examples=["A+"])
     units_needed: int = Field(ge=1, examples=[2])
-    hospital_name: str = Field(examples=["Hospital Civil Fray Antonio Alcalde"])
-    hospital_lat: float = Field(examples=[20.6866])
-    hospital_lon: float = Field(examples=[-103.3496])
+    hospital_id: str = Field(description="Id de GET /hospitals", examples=["hc-fray-antonio"])
     urgency: Literal["critica", "alta", "normal"]
     hours_valid: int = Field(default=24, ge=1, le=168)
-
-
-class ConfirmIn(BaseModel):
-    donor_id: str
 
 
 # ---------- salida ----------
@@ -69,6 +78,8 @@ class DonorOut(BaseModel):
     email: str
     blood_type: str
     weight_kg: float
+    lat: float
+    lon: float
     last_donation: date | None
     response_rate: float
     eligibility: EligibilityOut
@@ -76,8 +87,38 @@ class DonorOut(BaseModel):
     @classmethod
     def of(cls, d: Donor) -> DonorOut:
         return cls(id=d.id, name=d.name, email=d.email, blood_type=str(d.blood_type),
-                   weight_kg=d.weight_kg, last_donation=d.last_donation,
+                   weight_kg=d.weight_kg, lat=d.location.lat, lon=d.location.lon,
+                   last_donation=d.last_donation,
                    response_rate=round(d.response_rate, 2), eligibility=EligibilityOut.of(d.eligibility))
+
+
+class SessionOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    donor: DonorOut
+
+
+class HospitalOut(BaseModel):
+    id: str
+    name: str
+
+
+class DonationOut(BaseModel):
+    date: date
+    request_id: str | None
+    hospital: str | None
+
+
+class DonationHistoryOut(BaseModel):
+    total: int
+    requests_covered: int
+    donations: list[DonationOut]   # la más reciente primero
+
+    @classmethod
+    def of(cls, h: DonationHistory) -> DonationHistoryOut:
+        return cls(total=h.total, requests_covered=h.requests_covered,
+                   donations=[DonationOut(date=r.day, request_id=r.request_id, hospital=r.hospital)
+                              for r in h.newest_first()])
 
 
 class RequestOut(BaseModel):
@@ -101,6 +142,11 @@ class RequestOut(BaseModel):
                    hospital=r.hospital.name, urgency=r.urgency.value, status=r.status.value,
                    deadline=r.deadline, waves_sent=r.waves_sent,
                    notified_donors=list(r.notified_donors), confirmed_donors=list(r.confirmed_donors))
+
+
+class CreatedRequestOut(RequestOut):
+    """Respuesta de crear: incluye el token para manejar la solicitud. Solo se entrega aquí."""
+    manage_token: str
 
 
 class CandidateOut(BaseModel):

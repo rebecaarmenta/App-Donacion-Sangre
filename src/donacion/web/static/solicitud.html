@@ -19,8 +19,7 @@
 
   <main>
     <h1>Necesito sangre</h1>
-    <p class="subtitulo">Registra la solicitud y el agente avisará primero a los donantes con más probabilidad de ayudar.
-      <span id="indicador-ia" class="insignia insignia-pendiente"></span></p>
+    <p class="subtitulo">Registra la solicitud y el agente avisará primero a los donantes con más probabilidad de ayudar.</p>
 
     <div id="mensaje" class="mensaje oculto" role="status"></div>
 
@@ -50,12 +49,11 @@
 
       <div class="card">
         <h2>Agente de priorización</h2>
-        <p class="ayuda">El agente filtra a los donantes compatibles, aptos y cercanos, los ordena y avisa por oleadas (10 donantes por defecto).
-          Si la solicitud no se cubre en el tiempo de espera (15 minutos por defecto), puede enviar la siguiente oleada.</p>
+        <p class="ayuda">Al crear la solicitud, el agente avisa de inmediato a la primera oleada (10 donantes por defecto).
+          Si no se cubre en el tiempo de espera (15 minutos por defecto), envía solo la siguiente oleada. Esta página se actualiza sola.</p>
         <div class="acciones">
           <button id="btn-candidatos" class="btn-secundario" type="button">Ver candidatos</button>
-          <button id="btn-oleada" class="btn" type="button">Enviar oleada de alertas</button>
-          <button id="btn-escalar" class="btn-secundario" type="button">Revisar escalamiento</button>
+          <button id="btn-oleada" class="btn" type="button">Enviar siguiente oleada ahora</button>
           <button id="btn-refrescar" class="btn-secundario" type="button">Actualizar estado</button>
         </div>
       </div>
@@ -77,7 +75,6 @@
     </section>
   </main>
 
-  <footer>MVP · Diseño de Software · ITESO · ODS 3 Salud y Bienestar</footer>
   <script type="module" src="js/solicitud.js"></script>
 </body>
 </html>

@@ -11,7 +11,6 @@ sin modificar MatchingAgent ni el resto del sistema (principio abierto/cerrado).
 """
 from __future__ import annotations
 
-import os
 from abc import ABC, abstractmethod
 
 from ..ports.llm import LLMClient
@@ -21,14 +20,18 @@ from .matching_agent import MatchingAgent
 from .scoring import LLMAssistedScoring, RuleBasedScoring, ScoringStrategy
 from .waves import WavePlanner
 
-# Parámetros del MVP (documento de visión, secciones 5 y 9).
+# Parámetros del documento de visión (secciones 5 y 9). Oleada y espera se configuran en Settings.
 MAX_DISTANCE_KM = 50
-WAVE_SIZE = 10  # se puede cambiar para la demo con DONACION_WAVE_SIZE
-WAVE_WAIT_MINUTES = 15  # se puede cambiar para la demo con DONACION_WAVE_WAIT_MINUTES (p. ej. 0.25 = 15 s)
+WAVE_SIZE = 10
+WAVE_WAIT_MINUTES = 15
 
 
 class MatchingAgentFactory(ABC):
     """Clase creadora."""
+
+    def __init__(self, wave_size: int = WAVE_SIZE, wave_wait_minutes: float = WAVE_WAIT_MINUTES) -> None:
+        self._wave_size = wave_size
+        self._wave_wait_minutes = wave_wait_minutes
 
     @abstractmethod
     def create_scoring(self) -> ScoringStrategy:
@@ -42,9 +45,7 @@ class MatchingAgentFactory(ABC):
         return [CompatibilityFilter(), EligibilityFilter(), MaxDistanceFilter(MAX_DISTANCE_KM)]
 
     def create_planner(self) -> WavePlanner:
-        wait = float(os.getenv("DONACION_WAVE_WAIT_MINUTES", WAVE_WAIT_MINUTES))
-        size = int(os.getenv("DONACION_WAVE_SIZE", WAVE_SIZE))
-        return WavePlanner(wave_size=size, wait_minutes=wait)
+        return WavePlanner(wave_size=self._wave_size, wait_minutes=self._wave_wait_minutes)
 
     def build(self) -> MatchingAgent:
         return MatchingAgent(
@@ -68,7 +69,9 @@ class RuleBasedAgentFactory(MatchingAgentFactory):
 class AIAgentFactory(MatchingAgentFactory):
     """Fábrica concreta: agente con IA y las reglas como respaldo."""
 
-    def __init__(self, llm: LLMClient) -> None:
+    def __init__(self, llm: LLMClient, wave_size: int = WAVE_SIZE,
+                 wave_wait_minutes: float = WAVE_WAIT_MINUTES) -> None:
+        super().__init__(wave_size, wave_wait_minutes)
         self._llm = llm
 
     def create_scoring(self) -> ScoringStrategy:

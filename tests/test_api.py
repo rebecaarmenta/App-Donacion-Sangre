@@ -12,8 +12,12 @@ def make_client(clock):
     return TestClient(create_app(platform)), platform
 
 
+def bearer(login_response):
+    return {"Authorization": f"Bearer {login_response.json()['access_token']}"}
+
+
 def test_flujo_completo(clock):
-    client, _ = make_client(clock)
+    client, platform = make_client(clock)
 
     # 1. Registro + login
     new = client.post("/donors", json={
@@ -24,21 +28,22 @@ def test_flujo_completo(clock):
     donor_id = new.json()["id"]
     assert new.json()["eligibility"]["status"] == "pendiente"
     assert client.post("/auth/login", json={"email": "mariana@correo.com", "password": "mala"}).status_code == 401
-    assert client.post("/auth/login", json={"email": "mariana@correo.com", "password": "segura123"}).status_code == 200
+    session = client.post("/auth/login", json={"email": "mariana@correo.com", "password": "segura123"})
+    assert session.status_code == 200 and session.json()["donor"]["id"] == donor_id
 
     # 2. Tamizaje
-    screening = client.post(f"/donors/{donor_id}/screening", json={})
+    screening = client.post("/me/screening", json={}, headers=bearer(session))
     assert screening.json()["status"] == "apto"
 
     # 3. Solicitud crítica A+
     req = client.post("/requests", json={
         "requester_name": "Familia Pérez", "blood_type": "A+", "units_needed": 2,
-        "hospital_name": "Hospital Civil", "hospital_lat": 20.6866, "hospital_lon": -103.3496,
-        "urgency": "critica",
+        "hospital_id": "hc-fray-antonio", "urgency": "critica",
     }).json()
 
     # 4. El agente ordena y envía la oleada
-    candidates = client.get(f"/requests/{req['id']}/candidates").json()
+    own = {"X-Request-Token": req["manage_token"]}
+    candidates = client.get(f"/requests/{req['id']}/candidates", headers=own).json()
     names = [c["name"] for c in candidates]
     assert "Gabriela Paz" not in names        # tatuaje reciente
     assert "Jorge Ríos" not in names          # peso < 50
@@ -46,15 +51,20 @@ def test_flujo_completo(clock):
     assert "Fernando Gil" not in names        # B+ incompatible
     assert all(c["blood_type"] in {"A+", "A-", "O+", "O-"} for c in candidates)
 
-    alerts = client.post(f"/requests/{req['id']}/dispatch").json()
+    assert req["waves_sent"] == 1                     # la primera oleada sale al crear la solicitud
+    alerts = client.get(f"/requests/{req['id']}/alerts", headers=own).json()
     assert alerts and all(a["wave"] == 1 for a in alerts)
 
     # 5. Confirmaciones hasta cubrir la solicitud
+    passwords = {"mariana@correo.com": "segura123"}
+    by_id = {d.id: d.email for d in platform.list_donors()}
     for alert in alerts[:2]:
-        status = client.post(f"/requests/{req['id']}/confirm", json={"donor_id": alert["donor_id"]})
+        email = by_id[alert["donor_id"]]
+        session = client.post("/auth/login", json={"email": email, "password": passwords.get(email, DEMO_PASSWORD)})
+        status = client.post(f"/requests/{req['id']}/confirm", headers=bearer(session))
         assert status.status_code == 200
     assert status.json()["status"] == "cubierta"
-    assert client.post(f"/requests/{req['id']}/dispatch").status_code == 409
+    assert client.post(f"/requests/{req['id']}/dispatch", headers=own).status_code == 409
 
 
 def test_escalamiento_envia_segunda_oleada(clock):
@@ -63,12 +73,13 @@ def test_escalamiento_envia_segunda_oleada(clock):
         d = client.post("/donors", json={
             "name": f"Extra {i}", "email": f"extra{i}@correo.com", "password": "segura123",
             "birth_date": "1995-01-01", "weight_kg": 70, "blood_type": "O+",
-            "lat": 20.68 + i * 0.002, "lon": -103.35}).json()
-        client.post(f"/donors/{d['id']}/screening", json={})
+            "lat": 20.68 + i * 0.002, "lon": -103.35})
+        session = client.post("/auth/login", json={"email": f"extra{i}@correo.com", "password": "segura123"})
+        client.post("/me/screening", json={}, headers=bearer(session))
     req = client.post("/requests", json={
-        "requester_name": "F", "blood_type": "O+", "units_needed": 3, "hospital_name": "H",
-        "hospital_lat": 20.6866, "hospital_lon": -103.3496, "urgency": "alta"}).json()
-    first = client.post(f"/requests/{req['id']}/dispatch").json()
+        "requester_name": "F", "blood_type": "O+", "units_needed": 3, "hospital_id": "hc-fray-antonio",
+        "urgency": "alta"}).json()
+    first = client.get(f"/requests/{req['id']}/alerts", headers={"X-Request-Token": req["manage_token"]}).json()
     assert len(first) == 10
 
     assert client.post("/requests/escalate").json() == {}   # aún no pasan 15 minutos

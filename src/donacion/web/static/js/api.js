@@ -1,4 +1,4 @@
-// Cliente HTTP de la API. fetch se inyecta para poder probarlo sin servidor.
+// Cliente HTTP de la API. fetch y el lector del token se inyectan para poder probarlo sin servidor.
 import { errorMessage } from "./format.js";
 
 export class ApiError extends Error {
@@ -9,9 +9,11 @@ export class ApiError extends Error {
   }
 }
 
-export function createApi(fetchImpl = (...args) => globalThis.fetch(...args)) {
-  async function request(method, path, body) {
-    const init = { method, headers: {} };
+export function createApi(fetchImpl = (...args) => globalThis.fetch(...args), getToken = () => null) {
+  async function request(method, path, body, headers = {}) {
+    const init = { method, headers: { ...headers } };
+    const token = getToken();
+    if (token) init.headers.Authorization = `Bearer ${token}`;
     if (body !== undefined) {
       init.headers["Content-Type"] = "application/json";
       init.body = JSON.stringify(body);
@@ -28,15 +30,23 @@ export function createApi(fetchImpl = (...args) => globalThis.fetch(...args)) {
     health: () => request("GET", "/health"),
     registerDonor: payload => request("POST", "/donors", payload),
     login: (email, password) => request("POST", "/auth/login", { email, password }),
-    getDonor: id => request("GET", `/donors/${encodeURIComponent(id)}`),
-    submitScreening: (id, payload) => request("POST", `/donors/${encodeURIComponent(id)}/screening`, payload),
-    getAlerts: id => request("GET", `/donors/${encodeURIComponent(id)}/alerts`),
+    // Rutas del donante: el servidor lo identifica por el token, no por un id en la URL.
+    getMe: () => request("GET", "/me"),
+    updateProfile: payload => request("PATCH", "/me", payload),
+    submitScreening: payload => request("POST", "/me/screening", payload),
+    getAlerts: () => request("GET", "/me/alerts"),
+    getDonations: () => request("GET", "/me/donations"),
+    listHospitals: () => request("GET", "/hospitals"),
     createRequest: payload => request("POST", "/requests", payload),
     getRequest: id => request("GET", `/requests/${encodeURIComponent(id)}`),
-    getCandidates: id => request("GET", `/requests/${encodeURIComponent(id)}/candidates`),
-    dispatch: id => request("POST", `/requests/${encodeURIComponent(id)}/dispatch`),
-    confirm: (requestId, donorId) =>
-      request("POST", `/requests/${encodeURIComponent(requestId)}/confirm`, { donor_id: donorId }),
+    // Manejar una solicitud pide el token que el servidor entregó al crearla.
+    getRequestAlerts: (id, token) =>
+      request("GET", `/requests/${encodeURIComponent(id)}/alerts`, undefined, { "X-Request-Token": token }),
+    getCandidates: (id, token) =>
+      request("GET", `/requests/${encodeURIComponent(id)}/candidates`, undefined, { "X-Request-Token": token }),
+    dispatch: (id, token) =>
+      request("POST", `/requests/${encodeURIComponent(id)}/dispatch`, undefined, { "X-Request-Token": token }),
+    confirm: requestId => request("POST", `/requests/${encodeURIComponent(requestId)}/confirm`),
     escalate: () => request("POST", "/requests/escalate"),
   };
 }

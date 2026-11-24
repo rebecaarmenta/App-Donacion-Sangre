@@ -3,7 +3,7 @@
 Refactorizar es **mejorar la estructura del código sin cambiar su comportamiento**. Cada cambio de esta
 bitácora se hizo así:
 
-1. Con la suite de pruebas en verde (las 39 pruebas originales del MVP).
+1. Con la suite de pruebas en verde (las 39 pruebas originales de la primera versión).
 2. Primero una prueba nueva que falla (RED) y fija lo que debe cumplir la nueva estructura.
 3. El cambio mínimo para que pase (GREEN).
 4. La suite completa otra vez en verde y un commit propio (`git log` muestra cada uno).

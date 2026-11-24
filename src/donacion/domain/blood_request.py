@@ -54,6 +54,21 @@ class BloodRequest:
         self._waves_sent = 0
         self._last_wave_at: datetime | None = None
 
+    @classmethod
+    def restore(cls, request_id: str, requester_name: str, blood_type: BloodType, units_needed: int,
+                hospital: Hospital, urgency: Urgency, deadline: datetime, created_at: datetime,
+                status: RequestStatus, notified_donors: tuple[str, ...], confirmed_donors: tuple[str, ...],
+                waves_sent: int, last_wave_at: datetime | None) -> BloodRequest:
+        """Reconstruye una solicitud guardada (lo usan los repositorios), con todo su estado."""
+        request = cls(request_id, requester_name, blood_type, units_needed, hospital, urgency,
+                      deadline, created_at)
+        request._status = status
+        request._notified_donors = list(notified_donors)
+        request._confirmed_donors = list(confirmed_donors)
+        request._waves_sent = waves_sent
+        request._last_wave_at = last_wave_at
+        return request
+
     # ---- lectura ----
     @property
     def id(self) -> str: return self._id

@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import date
 
 from .blood_type import BloodType
+from .donation import DonationRecord
 from .eligibility import EligibilityResult, EligibilityStatus
 from .errors import ValidationError
 from .location import Location
@@ -31,6 +32,20 @@ class Donor:
         self._last_donation = last_donation
         self._eligibility = EligibilityResult.pending()
         self._history = ResponseHistory()
+        self._donations: list[DonationRecord] = []
+
+    @classmethod
+    def restore(cls, donor_id: str, name: str, email: str, password_hash: str, birth_date: date,
+                weight_kg: float, blood_type: BloodType, location: Location, last_donation: date | None,
+                eligibility: EligibilityResult, history: ResponseHistory,
+                donations: tuple[DonationRecord, ...]) -> Donor:
+        """Reconstruye un donante guardado (lo usan los repositorios), con todo su estado."""
+        donor = cls(donor_id, name, email, password_hash, birth_date, weight_kg, blood_type,
+                    location, last_donation)
+        donor._eligibility = eligibility
+        donor._history = history
+        donor._donations = list(donations)
+        return donor
 
     # ---- lectura ----
     @property
@@ -58,6 +73,9 @@ class Donor:
     def response_history(self) -> ResponseHistory: return self._history
 
     @property
+    def donations(self) -> tuple[DonationRecord, ...]: return tuple(self._donations)
+
+    @property
     def response_rate(self) -> float:
         return self._history.rate
 
@@ -71,15 +89,38 @@ class Donor:
         return self._eligibility.allows_donation_on(day)
 
     # ---- comportamiento ----
+    def update_profile(self, name: str | None = None, weight_kg: float | None = None,
+                       location: Location | None = None, last_donation: date | None = None) -> None:
+        """Cambia los datos que el donante puede editar. Si cambia algo que el tamizaje usa
+        (peso o última donación), el resultado anterior ya no vale y debe repetir el cuestionario."""
+        if name is not None and not name.strip():
+            raise ValidationError("El nombre es obligatorio")
+        if weight_kg is not None and weight_kg <= 0:
+            raise ValidationError("El peso debe ser positivo")
+        affects_screening = ((weight_kg is not None and weight_kg != self._weight_kg)
+                             or (last_donation is not None and last_donation != self._last_donation))
+        if name is not None:
+            self._name = name.strip()
+        if weight_kg is not None:
+            self._weight_kg = weight_kg
+        if location is not None:
+            self._location = location
+        if last_donation is not None:
+            self._last_donation = last_donation
+        if affects_screening:
+            self._eligibility = EligibilityResult.pending()
+
     def update_eligibility(self, result: EligibilityResult) -> None:
         self._eligibility = result
 
     def register_alert(self) -> None:
         self._history = self._history.with_alert()
 
-    def record_donation(self, day: date, next_eligible: date) -> None:
-        """Registra una donación confirmada y difiere al donante hasta next_eligible."""
+    def record_donation(self, day: date, next_eligible: date, request_id: str | None = None,
+                        hospital: str | None = None) -> None:
+        """Registra una donación confirmada en su historial y difiere al donante hasta next_eligible."""
         self._last_donation = day
+        self._donations.append(DonationRecord(day, request_id, hospital))
         self._history = self._history.with_acceptance()
         self._eligibility = EligibilityResult(
             EligibilityStatus.DEFERRED,

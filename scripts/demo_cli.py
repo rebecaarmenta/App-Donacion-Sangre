@@ -1,17 +1,19 @@
-"""Demo en consola del flujo completo del MVP (útil para grabar el video).
+"""Demo en consola del flujo completo de la app (útil para grabar el video).
 
-    python scripts/demo_cli.py            # usa IA si hay ANTHROPIC_API_KEY
+    python scripts/demo_cli.py            # usa IA local con Ollama (si no está corriendo, reglas)
     DONACION_USE_LLM=0 python scripts/demo_cli.py   # solo reglas
 """
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from donacion.adapters.system_clock import ManualClock  # noqa: E402
+from donacion.config import Settings  # noqa: E402
 from donacion.container import build_platform  # noqa: E402
 from donacion.demo import seed_demo  # noqa: E402
 from donacion.domain.eligibility import ScreeningAnswers  # noqa: E402
@@ -24,9 +26,10 @@ def title(text: str) -> None:
 
 def main() -> None:
     clock = ManualClock(datetime.now().replace(second=0, microsecond=0))
-    p = build_platform(clock=clock)
+    # Base de datos temporal: la demo no toca los datos guardados de la app.
+    p = build_platform(clock=clock, settings=replace(Settings.from_env(), database_path=":memory:"))
     seed_demo(p)
-    print(f"Agente con IA (Claude): {'sí' if p.ai_enabled else 'no, solo reglas'}")
+    print(f"Agente con IA: {p.ai_provider if p.ai_enabled else 'no, solo reglas'}")
 
     title("1. Registro de un donante nuevo")
     donor = p.register_donor(RegisterDonorCommand(
@@ -45,17 +48,17 @@ def main() -> None:
     title("3. Solicitud urgente: 2 unidades A+ en el Hospital Civil")
     req = p.create_request_valid_for(
         12, requester_name="Familia Pérez", blood_type="A+", units_needed=2,
-        hospital_name="Hospital Civil Fray Antonio Alcalde", hospital_lat=20.6866, hospital_lon=-103.3496,
+        hospital_id="hc-fray-antonio",
         urgency="critica")
-    print(f"Solicitud {req.id} creada ({req.urgency.value}).")
+    print(f"Solicitud {req.id} creada ({req.urgency.value}). El agente ya envió la primera oleada.")
 
     title("4. El agente filtra y ordena a los candidatos")
     for i, cand in enumerate(p.preview_candidates(req.id), start=1):
         print(f"{i:>2}. {cand.donor.name:<16} {str(cand.donor.blood_type):<4} puntaje {cand.score:>5}  "
               f"{cand.distance_km:>5} km")
 
-    title("5. Primera oleada de alertas")
-    alerts = p.dispatch_wave(req.id)
+    title("5. Primera oleada de alertas (enviada al crear la solicitud)")
+    alerts = p.alerts_for_request(req.id)
     for a in alerts:
         print(f"-> {a.donor_name}: {a.message}")
 

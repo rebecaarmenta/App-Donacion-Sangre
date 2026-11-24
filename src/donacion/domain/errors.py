@@ -17,5 +17,9 @@ class AuthenticationError(DomainError):
     """Correo o contraseña incorrectos."""
 
 
+class ForbiddenError(DomainError):
+    """La credencial es válida, pero no da permiso sobre este recurso."""
+
+
 class ConflictError(DomainError):
     """La operación choca con el estado actual (p. ej. correo duplicado, solicitud cerrada)."""

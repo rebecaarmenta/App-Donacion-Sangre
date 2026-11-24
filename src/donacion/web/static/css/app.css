@@ -179,10 +179,3 @@ td ul { margin: 0; padding-left: 18px; color: var(--texto-suave); }
 .resumen strong { color: var(--rojo); }
 
 .oculto { display: none !important; }
-
-footer {
-  text-align: center;
-  color: var(--texto-suave);
-  font-size: 0.85rem;
-  padding: 0 20px 28px;
-}

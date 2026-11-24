@@ -1,26 +1,28 @@
-# Plataforma Agéntica de Donación de Sangre – MVP
+# Plataforma Agéntica de Donación de Sangre
 
-Primera versión del proyecto de Diseño de Software (ITESO), basada en el documento
+Proyecto de Diseño de Software (ITESO), basado en el documento
 [Visión y Alcances v2](docs/vision_y_alcances_v2.pdf). Se alinea con el **ODS 3: Salud y Bienestar**.
 
 **Autora:** Maria Rebeca Armenta Armenta
 
-## Qué incluye este MVP
+## Qué incluye la app
 
 | # | Característica | Qué hace |
 |---|---|---|
-| 1 | Registro y perfil del donante | Registro con contraseña cifrada, inicio de sesión y perfil (tipo de sangre, peso, ubicación, última donación). |
+| 1 | Registro y perfil del donante | Registro con contraseña cifrada, inicio de sesión y perfil editable (nombre, peso, ubicación, última donación). |
 | 2 | Cuestionario de tamizaje | Reglas fijas basadas en la NOM-253-SSA1-2012: edad, peso, tatuajes, cirugías, medicamentos, intervalo entre donaciones y exclusiones permanentes. Resultado: **apto**, **diferido** (con la fecha en que vuelve a ser apto) o **no apto**. |
 | 3 | Solicitud de sangre | Un familiar registra tipo de sangre, unidades, hospital, urgencia y vigencia. |
 | 4 | Agente de priorización y matching | Filtra donantes compatibles (ABO/Rh), aptos y cercanos; los **ordena** con un puntaje (distancia, compatibilidad, tasa de respuesta, reserva de O-); avisa **por oleadas** de 10 y, si en 15 minutos no se cubre la solicitud, envía la siguiente; **explica** cada alerta. |
+| 5 | Historial de donaciones | Cada donación confirmada queda en el historial del donante, con fecha y hospital, y muestra su impacto: cuántas veces ha donado y cuántas solicitudes ayudó a cubrir. |
 
-Fuera del MVP (versiones posteriores): validación por banco de sangre, historial de donaciones
-y recordatorios. Mapa de campañas y estadísticas regionales **no se desarrollan**.
+Quedan fuera de esta versión la validación de solicitudes por el banco de sangre y los
+recordatorios. El historial de donaciones, que estaba planeado para después, ya se incluye.
+El mapa de campañas y las estadísticas regionales no forman parte del proyecto.
 
 ### ¿Qué razona el agente?
 
 1. **Filtra** con reglas duras: compatibilidad ABO/Rh, elegibilidad médica y distancia máxima (50 km).
-2. **Prioriza** a los candidatos. Con IA, Claude reordena a los mejores 15 según la urgencia,
+2. **Prioriza** a los candidatos. Con IA, un modelo local de Ollama reordena a los mejores 15 según la urgencia,
    la cercanía y la tasa de respuesta, y justifica su decisión.
 3. **Planea oleadas** sin repetir donantes y **escala** si la solicitud no se cubre a tiempo.
 4. **Explica** a cada donante por qué se le eligió.
@@ -38,16 +40,15 @@ agent/        MatchingAgent + filtros, estrategias de puntaje, oleadas y explica
 screening/    reglas de la NOM-253 y ScreeningEvaluator (sin IA)
 domain/       entidades y value objects: Donor, BloodRequest, BloodType, Location…
 ports/        interfaces: repositorios, Notifier, LLMClient, PasswordHasher, Clock
-adapters/     implementaciones: memoria, consola, Claude, PBKDF2, reloj
+adapters/     implementaciones: SQLite (y memoria), consola, Ollama, PBKDF2, tokens HMAC, reloj, reintentos, escalamiento
 container.py  composition root: elige la fábrica del agente y arma la fachada DonationPlatform
 ```
 
 Las dependencias apuntan hacia adentro: el dominio no conoce FastAPI, la base de datos ni la IA.
 
 Documentación de diseño:
-- [docs/patrones_y_solid.md](docs/patrones_y_solid.md): dónde está cada principio SOLID y cada patrón (Factory Method, Facade, Adapter, Strategy, Template Method, Repository).
+- [docs/patrones_y_solid.md](docs/patrones_y_solid.md): dónde está cada principio SOLID y cada patrón (Factory Method, Facade, Adapter, Strategy, Template Method, Repository, Decorator).
 - [docs/refactorizacion.md](docs/refactorizacion.md): bitácora de refactorizaciones (olor de código → técnica → antes/después → commit).
-- [docs/diagrama_clases.md](docs/diagrama_clases.md): diagrama de clases.
 
 ### Principios SOLID
 
@@ -86,16 +87,18 @@ Para detenerla: `Ctrl + C`.
 Con `python run.py` abierto, entra a **http://localhost:8000** (redirige a `/app/`).
 
 - **Soy donante** (`/app/donante.html`): registro, inicio de sesión, perfil con su estado (apto, diferido o no apto), cuestionario de elegibilidad y alertas recibidas con el botón "Confirmo que voy a donar".
-- **Necesito sangre** (`/app/solicitud.html`): crear la solicitud eligiendo hospital y urgencia, ver a los candidatos que ordenó el agente con sus razones, enviar oleadas de alertas, revisar el escalamiento y ver el estado (por ejemplo, "Cubierta 2/2").
+- **Necesito sangre** (`/app/solicitud.html`): crear la solicitud eligiendo hospital y urgencia, ver las alertas de la primera oleada (se envía sola al crear la solicitud), ver a los candidatos que ordenó el agente con sus razones, adelantar la siguiente oleada y ver el estado (por ejemplo, "Cubierta 2/2"). La página se actualiza cada 10 s.
 
 Flujo para la demo:
-1. En **Necesito sangre**, crea una solicitud: Familia Pérez, A+, 2 unidades, Hospital Civil Fray Antonio Alcalde, urgencia crítica.
+1. En **Necesito sangre**, crea una solicitud: Familia Pérez, A+, 2 unidades, Hospital Civil Fray Antonio Alcalde, urgencia crítica. La primera oleada sale de inmediato.
 2. **Ver candidatos**: no aparecen Gabriela Paz (tatuaje reciente), Héctor Luna (donó hace 30 días), Jorge Ríos (peso menor a 50 kg) ni Fernando Gil (B+, incompatible).
-3. **Enviar oleada de alertas**.
+3. Si nadie confirma a tiempo, el servidor envía solo la siguiente oleada (o puedes adelantarla con **Enviar siguiente oleada ahora**).
 4. En otra pestaña, en **Soy donante**, entra como `donante1@demo.mx` / `demo1234` (Ana López) y presiona "Confirmo que voy a donar". Repite con `donante5@demo.mx` (Elena Soto). La solicitud queda **Cubierta 2/2**.
 
-> La sesión del donante solo guarda su id en el navegador (`localStorage`); es un MVP sin tokens de seguridad.
-> Los datos viven en memoria: al reiniciar el servidor se vuelven a cargar solo los donantes de prueba.
+> Al iniciar sesión, el servidor entrega un token firmado con HMAC-SHA256 que vence en 8 horas; el navegador lo guarda en `localStorage` y lo manda como `Authorization: Bearer ...`. Las rutas del donante (`/me...` y `/confirm`) sacan su id del token, nunca del cuerpo ni de la URL. La clave que firma las sesiones se genera la primera vez y se guarda en la base de datos, así que las sesiones siguen valiendo al reiniciar (o se puede fijar con `DONACION_TOKEN_SECRET`).
+> Quien crea una solicitud no tiene cuenta: el servidor le entrega un `manage_token` firmado (válido hasta un día después de la fecha límite) y solo con él se ven los candidatos y las alertas o se adelantan oleadas. Un token de donante no sirve para esto ni al revés.
+> El hospital de una solicitud se elige del catálogo del servidor (`GET /hospitals`, `hospital_id`). No se acepta texto libre porque su nombre llega al modelo de IA que redacta las alertas.
+> Los datos se guardan en **SQLite**, en el archivo `donacion.sqlite3` de la raíz del proyecto (`DONACION_DB` cambia la ruta). Sobreviven a los reinicios; los donantes de prueba solo se cargan si la base está vacía. Para empezar desde cero, detén el servidor y borra `donacion.sqlite3`. Las pruebas y la demo en consola usan una base temporal en memoria y nunca tocan ese archivo.
 
 **Demo en consola** (registro → tamizaje → solicitud → ranking → oleada → confirmación):
 
@@ -110,36 +113,49 @@ python -m pytest                       # backend (Python)
 node --test tests/web/*.test.mjs       # módulos de la interfaz (JavaScript, Node 18+)
 ```
 
-### Usar la IA (Claude)
+### Usar la IA (Ollama)
 
-El agente usa **Claude Opus 5.5** mediante la SDK oficial `anthropic`. Se activa solo si hay credenciales:
+El agente usa un modelo **local con [Ollama](https://ollama.com)**, así que no hay consumo de tokens de pago. Por defecto usa `llama3.2`:
 
 ```bash
-export ANTHROPIC_API_KEY="tu-clave"     # Windows: set ANTHROPIC_API_KEY=tu-clave
+ollama pull llama3.2      # una sola vez
+ollama serve              # si no está corriendo ya como servicio
 ```
 
-- `DONACION_USE_LLM=0` fuerza el modo solo reglas; `DONACION_USE_LLM=1` lo fuerza con IA.
-- Sin clave, todo funciona con reglas. `GET /health` indica si el agente usa IA.
+- `OLLAMA_MODEL` cambia el modelo (por ejemplo `qwen2.5:3b`) y `OLLAMA_HOST` la dirección (`http://localhost:11434` por defecto).
+- Si Ollama no está corriendo o responde algo inválido, el agente usa las reglas fijas sin fallar.
+- `DONACION_USE_LLM=0` usa solo reglas (por defecto se usa Ollama). `OLLAMA_TIMEOUT_SECONDS` (60 por defecto) es el tiempo máximo de espera por respuesta. `GET /health` indica si el agente usa IA.
+- Toda la configuración se lee y valida en `src/donacion/config.py` (`Settings`); un valor inválido detiene el arranque con un mensaje claro.
 - Al modelo solo se le envían datos necesarios para decidir (tipo de sangre, distancia, tasa de respuesta); nunca nombres, correos ni ubicación exacta.
+- La **primera oleada** siempre se planea con reglas y mensajes de plantilla, para que salga en menos de 5 segundos aunque el modelo local sea lento. La IA reordena y redacta **a partir de la segunda oleada**, que tiene 15 minutos de margen.
+- El **escalamiento es automático**: mientras el servidor corre, revisa cada `DONACION_ESCALATION_CHECK_SECONDS` (30 por defecto) si toca otra oleada. `DONACION_AUTO_ESCALATE=0` lo apaga.
+- Cada alerta se **reintenta** hasta 3 veces con espera creciente si el canal de notificación falla; aunque se agoten los intentos, la alerta queda visible en la app del donante.
 - `DONACION_SEED_DEMO=0` arranca la API sin datos de prueba.
 - `DONACION_WAVE_WAIT_MINUTES` cambia la espera entre oleadas (15 minutos por defecto) y `DONACION_WAVE_SIZE` el tamaño de cada oleada (10 por defecto). Para mostrar el escalamiento en una demo con los donantes de prueba:
-  `DONACION_WAVE_WAIT_MINUTES=0.25 DONACION_WAVE_SIZE=3 python run.py` (oleadas de 3 donantes cada 15 segundos).
+  `DONACION_WAVE_WAIT_MINUTES=0.25 DONACION_WAVE_SIZE=3 DONACION_ESCALATION_CHECK_SECONDS=5 python run.py` (oleadas de 3 donantes cada 15 segundos).
 
 ## Endpoints
 
 | Método | Ruta | Característica |
 |---|---|---|
 | POST | `/donors` | Registrar donante |
-| POST | `/auth/login` | Iniciar sesión |
-| GET | `/donors`, `/donors/{id}` | Consultar perfil y elegibilidad |
-| GET | `/donors/{id}/alerts` | Alertas recibidas por el donante |
-| POST | `/donors/{id}/screening` | Contestar el cuestionario de tamizaje |
-| POST | `/requests` | Crear solicitud de sangre |
+| POST | `/auth/login` | Iniciar sesión (devuelve `access_token`) |
+| GET | `/me` 🔒 | Consultar mi perfil y elegibilidad |
+| PATCH | `/me` 🔒 | Editar nombre, peso, ubicación o última donación (si cambia el peso o la última donación, hay que repetir el cuestionario) |
+| GET | `/me/alerts` 🔒 | Alertas que recibí |
+| GET | `/me/donations` 🔒 | Mi historial de donaciones y su impacto |
+| POST | `/me/screening` 🔒 | Contestar el cuestionario de tamizaje |
+| GET | `/hospitals` | Catálogo de hospitales |
+| POST | `/requests` | Crear solicitud de sangre (con `hospital_id` del catálogo); envía la primera oleada y devuelve `manage_token` |
 | GET | `/requests/{id}` | Estado de la solicitud |
-| GET | `/requests/{id}/candidates` | Orden que propone el agente (sin enviar) |
-| POST | `/requests/{id}/dispatch` | Enviar la siguiente oleada de alertas |
-| POST | `/requests/{id}/confirm` | Un donante confirma su donación |
-| POST | `/requests/escalate` | Enviar nueva oleada a solicitudes no cubiertas a tiempo |
+| GET | `/requests/{id}/candidates` 🔑 | Orden por reglas de los candidatos (sin enviar) |
+| POST | `/requests/{id}/dispatch` 🔑 | Adelantar la siguiente oleada de alertas |
+| GET | `/requests/{id}/alerts` 🔑 | Alertas enviadas para la solicitud, por oleada |
+| POST | `/requests/{id}/confirm` 🔒 | El donante de la sesión confirma su donación |
+| POST | `/requests/escalate` | Revisar ahora el escalamiento (el servidor ya lo hace solo) |
+
+🔒 = requiere `Authorization: Bearer <access_token>` (sesión del donante).
+🔑 = requiere `X-Request-Token: <manage_token>` (solo quien creó la solicitud; la página lo guarda sola).
 
 ## Datos de prueba
 
