@@ -1,7 +1,7 @@
 # Plataforma Agéntica de Donación de Sangre
 
 Proyecto de Diseño de Software (ITESO), basado en el documento
-[Visión y Alcances v2](docs/vision_y_alcances_v2.pdf). Se alinea con el **ODS 3: Salud y Bienestar**.
+[Visión y Alcances](docs/vision_y_alcances.pdf). Se alinea con el **ODS 3: Salud y Bienestar**.
 
 **Autora:** Maria Rebeca Armenta Armenta
 
@@ -49,6 +49,22 @@ Las dependencias apuntan hacia adentro: el dominio no conoce FastAPI, la base de
 Documentación de diseño:
 - [docs/patrones_y_solid.md](docs/patrones_y_solid.md): dónde está cada principio SOLID y cada patrón (Factory Method, Facade, Adapter, Strategy, Template Method, Repository, Decorator).
 - [docs/refactorizacion.md](docs/refactorizacion.md): bitácora de refactorizaciones (olor de código → técnica → antes/después → commit).
+
+### Diagramas UML
+
+| Diagrama | Archivo |
+|---|---|
+| Casos de uso | [1-casos-de-uso.png](docs/diagramas/1-casos-de-uso.png) |
+| Componentes | [2-componentes.png](docs/diagramas/2-componentes.png) |
+| Clases | [3-clases.png](docs/diagramas/3-clases.png) |
+| Secuencia 1: crear solicitud | [4a-secuencia-crear-solicitud.png](docs/diagramas/4a-secuencia-crear-solicitud.png) |
+| Secuencia 2: escalamiento con IA | [4b-secuencia-escalamiento-con-ia.png](docs/diagramas/4b-secuencia-escalamiento-con-ia.png) |
+| Secuencia 3: confirmar donación | [4c-secuencia-confirmar-donacion.png](docs/diagramas/4c-secuencia-confirmar-donacion.png) |
+| Secuencia 4: inicio de sesión y tamizaje | [4d-secuencia-login-y-tamizaje.png](docs/diagramas/4d-secuencia-login-y-tamizaje.png) |
+
+![Diagrama de casos de uso](docs/diagramas/1-casos-de-uso.png)
+
+![Diagrama de componentes](docs/diagramas/2-componentes.png)
 
 ### Principios SOLID
 
